@@ -91,6 +91,15 @@ public:
   std::vector<std::string> getDatasetUuids();
 
   /**
+   * @brief Get points which should get constraint by the query polygon,
+   *  otherwise the data is not fullyEncapsulated by the polygon
+   *
+   * @return the points which should get checked and the frame as a string in
+   *  which they should be checked
+   */
+  frame_to_points_mapping getPolygonConstraintPoints();
+
+  /**
    * @brief Write generals labels based on C++ data structures to HdF5
    *
    * @param uuid uuid of the image data group

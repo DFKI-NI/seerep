@@ -67,6 +67,11 @@ std::vector<std::string> Hdf5CoreImage::getDatasetUuids()
   return getGroupDatasets(HDF5_GROUP_IMAGE);
 }
 
+frame_to_points_mapping Hdf5CoreImage::getPolygonConstraintPoints()
+{
+  return std::nullopt;
+}
+
 void Hdf5CoreImage::writeLabels(
     const std::string& uuid,
     const std::vector<seerep_core_msgs::LabelCategory>& labelCategory)

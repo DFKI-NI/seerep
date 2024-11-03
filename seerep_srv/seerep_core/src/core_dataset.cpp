@@ -283,6 +283,7 @@ CoreDataset::querySpatialSensorPos(
 std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
 CoreDataset::queryRtree(const seerep_core_msgs::rtree& rt,
                         const seerep_core_msgs::Polygon2D& polygon,
+                        // const seerep_hdf5_core::frame_to_points_mapping,
                         const bool queryFullyEncapsulated)
 {
   // generate rtree result container
@@ -306,6 +307,19 @@ CoreDataset::queryRtree(const seerep_core_msgs::rtree& rt,
     // provided in the query
     intersectionDegree(it->first, polygon, fullyEncapsulated,
                        partiallyEncapsulated);
+
+    // check thoroughly if a image has been passed and check whether the
+    // corresponding Frustum is in the polygon
+    // partial encapsulation is pre-condition for the case
+    // if the aabb of the data, which is a upper bound for the check, is
+    // already encapsulated we can skip the check
+    // if (partialEncapsulation && !fullEncapsulation)
+    // {
+    //   if (isPreciselyFullEncapsulated())
+    //   {
+    //     fullEncapsulation = true;
+    //   }
+    // }
 
     // if there is no intersection between the result and the user's
     // request, remove it from the iterator

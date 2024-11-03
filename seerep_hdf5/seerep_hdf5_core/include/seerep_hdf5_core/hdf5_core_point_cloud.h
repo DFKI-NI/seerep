@@ -38,6 +38,13 @@ public:
 
   std::vector<std::string> getDatasetUuids();
 
+  /**
+   * @brief THIS IS CURRENTLY A NOOP
+   *
+   * @return a empty vector and string
+   */
+  frame_to_points_mapping getPolygonConstraintPoints();
+
 public:
   // image / pointcloud attribute keys
   inline static const std::string HEIGHT = "height";
