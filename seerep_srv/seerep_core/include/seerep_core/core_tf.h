@@ -92,6 +92,20 @@ public:
                     const int64_t& timeNanos);
 
   /**
+   * @brief transform points into another frame
+   *
+   * @param sourceFrame the frame the points are in
+   * @param targetFrame the frame to transform the points to
+   * @param points the points to transform
+   *
+   * @return the transformed points
+   */
+  std::vector<seerep_core_msgs::Point>
+  transform(const std::string& sourceFrame, const std::string& targetFrame,
+            const int64_t& timeSecs, const int64_t& timeNanos,
+            const std::vector<seerep_core_msgs::Point>& points);
+
+  /**
    * @brief Returns a vector of all frames stored in the TF tree by the TF buffer
    * @return vector of frame names
    */

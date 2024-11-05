@@ -345,18 +345,19 @@ private:
                         const seerep_core_msgs::Query& query);
 
   /**
-   * @brief queries the
+   * @brief queries the rtree
    *
    * @param rt
    * @param polygon
+   * @param coreDatatype
    * @param queryFullyEncapsulated
    * @return std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
    */
-  std::optional<std::vector<seerep_core_msgs::AabbIdPair>> queryRtree(
-      const seerep_core_msgs::rtree& rt,
-      const seerep_core_msgs::Polygon2D& polygon,
-      // const seerep_hdf5_core::frame_to_points_mapping frame_and_points,
-      const bool queryFullyEncapsulated);
+  std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
+  queryRtree(const seerep_core_msgs::rtree& rt,
+             seerep_hdf5_core::Hdf5CoreDatatypeInterface& coreDatatype,
+             const seerep_core_msgs::Polygon2D& polygon,
+             const bool queryFullyEncapsulated);
 
   /**
    * @brief queries the temporal index and returns a vector of temporal bounding

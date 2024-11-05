@@ -64,7 +64,9 @@ std::vector<std::string> Hdf5CorePoint::getDatasetUuids()
   return getGroupDatasets(HDF5_GROUP_POINT);
 }
 
-frame_to_points_mapping Hdf5CorePoint::getPolygonConstraintPoints()
+std::optional<seerep_core_msgs::TimestampFramePoints>
+Hdf5CorePoint::getPolygonConstraintPoints(
+    std::optional<boost::uuids::uuid> uuid_entry)
 {
   return std::nullopt;
 }

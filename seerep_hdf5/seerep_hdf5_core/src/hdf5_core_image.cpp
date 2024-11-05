@@ -67,9 +67,42 @@ std::vector<std::string> Hdf5CoreImage::getDatasetUuids()
   return getGroupDatasets(HDF5_GROUP_IMAGE);
 }
 
-frame_to_points_mapping Hdf5CoreImage::getPolygonConstraintPoints()
+std::optional<seerep_core_msgs::TimestampFramePoints>
+Hdf5CoreImage::getPolygonConstraintPoints(
+    std::optional<boost::uuids::uuid> uuid_entry)
 {
-  return std::nullopt;
+  if (uuid_entry.has_value())
+  {
+    std::string hdf5DataGroupPath =
+        getHdf5GroupPath(boost::uuids::to_string(uuid_entry.value()));
+
+    auto dataGroupPtr = getHdf5Group(hdf5DataGroupPath);
+
+    // fetch the camera_intrinsics directly
+    auto camintrinsics_uuid = readAttributeFromHdf5<std::string>(
+        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::CAMERA_INTRINSICS_UUID,
+        hdf5DataGroupPath);
+
+    auto frame_id = readAttributeFromHdf5<std::string>(
+        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_FRAME_ID,
+        hdf5DataGroupPath);
+
+    // retrieve timestamp from image
+    auto stamp_seconds = readAttributeFromHdf5<int>(
+        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_STAMP_SECONDS,
+        hdf5DataGroupPath);
+
+    auto stamp_nanos = readAttributeFromHdf5<int>(
+        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_STAMP_NANOS,
+        hdf5DataGroupPath);
+
+    seerep_core_msgs::Timestamp ts{ stamp_seconds,
+                                    static_cast<uint32_t>(stamp_nanos) };
+
+    auto points = this->computeFrustumPoints(camintrinsics_uuid);
+
+    return seerep_core_msgs::TimestampFramePoints{ ts, points, frame_id };
+  }
 }
 
 void Hdf5CoreImage::writeLabels(
@@ -126,6 +159,32 @@ const std::string Hdf5CoreImage::getHdf5GroupPath(const std::string& id) const
 const std::string Hdf5CoreImage::getHdf5DataSetPath(const std::string& id) const
 {
   return getHdf5GroupPath(id) + "/" + RAWDATA;
+}
+
+std::array<seerep_core_msgs::Point, 5>
+Hdf5CoreImage::computeFrustumPoints(const std::string& camintrinsics_uuid)
+{
+  seerep_core_msgs::camera_intrinsics ci = m_ioCI->readCameraIntrinsics(
+      boost::lexical_cast<boost::uuids::uuid>(camintrinsics_uuid));
+
+  double far_plane_dist = ci.maximum_viewing_distance;
+
+  double far_fov_x = (far_plane_dist * ci.height) / ci.intrinsic_matrix[0];
+  double far_fov_y = (far_plane_dist * ci.width) / ci.intrinsic_matrix[4];
+
+  seerep_core_msgs::Point near_p{ 0, 0, 0 };
+  seerep_core_msgs::Point far_topleft{ far_fov_x / 2, far_fov_y / 2,
+                                       far_plane_dist };
+  seerep_core_msgs::Point far_topright{ -far_fov_x / 2, far_fov_y / 2,
+                                        far_plane_dist };
+  seerep_core_msgs::Point far_bottomleft{ far_fov_x / 2, -far_fov_y / 2,
+                                          far_plane_dist };
+  seerep_core_msgs::Point far_bottomright{ -far_fov_x / 2, -far_fov_y / 2,
+                                           far_plane_dist };
+
+  return std::array<seerep_core_msgs::Point, 5>{ near_p, far_topleft,
+                                                 far_topright, far_bottomleft,
+                                                 far_bottomright };
 }
 
 void Hdf5CoreImage::computeFrustumBB(const std::string& camintrinsics_uuid,

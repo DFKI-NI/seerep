@@ -3,6 +3,7 @@
 
 // seerep-msgs
 #include <seerep_msgs/dataset_indexable.h>
+#include <seerep_msgs/timestamp_frame_points.h>
 
 // std
 #include <boost/uuid/uuid.hpp>
@@ -10,8 +11,6 @@
 
 namespace seerep_hdf5_core
 {
-typedef std::optional<std::pair<std::string, std::vector<seerep_core_msgs::Point>>>
-    frame_to_points_mapping;
 
 class Hdf5CoreDatatypeInterface
 {
@@ -28,10 +27,14 @@ public:
    * return value are the points which should get checked, the second in which
    * frame they should be checked
    *
+   * @param uuid_entry optionally specify the uuid of a specific data entry to
+   * perform additional operations
+   *
    * @return the points which should get checked (if empty this should be a
    * noop) and the frame_id in which they need to get transformed from
    */
-  virtual frame_to_points_mapping getPolygonConstraintPoints() = 0;
+  virtual std::optional<seerep_core_msgs::TimestampFramePoints>
+  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry) = 0;
 };
 
 }  // namespace seerep_hdf5_core

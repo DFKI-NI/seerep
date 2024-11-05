@@ -255,8 +255,8 @@ CoreDataset::querySpatial(std::shared_ptr<DatatypeSpecifics> datatypeSpecifics,
 {
   if (query.polygon)
   {
-    return queryRtree(datatypeSpecifics->rt, query.polygon.value(),
-                      query.fullyEncapsulated);
+    return queryRtree(datatypeSpecifics->rt, *datatypeSpecifics->hdf5io,
+                      query.polygon.value(), query.fullyEncapsulated);
   }
   else
   {
@@ -272,6 +272,7 @@ CoreDataset::querySpatialSensorPos(
   if (query.polygonSensorPos)
   {
     return queryRtree(datatypeSpecifics->rtSensorPos,
+                      *datatypeSpecifics->hdf5io,
                       query.polygonSensorPos.value(), query.fullyEncapsulated);
   }
   else
@@ -280,11 +281,11 @@ CoreDataset::querySpatialSensorPos(
   }
 }
 
-std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
-CoreDataset::queryRtree(const seerep_core_msgs::rtree& rt,
-                        const seerep_core_msgs::Polygon2D& polygon,
-                        // const seerep_hdf5_core::frame_to_points_mapping,
-                        const bool queryFullyEncapsulated)
+std::optional<std::vector<seerep_core_msgs::AabbIdPair>> CoreDataset::queryRtree(
+    const seerep_core_msgs::rtree& rt,
+    seerep_hdf5_core::Hdf5CoreDatatypeInterface& coreDatatype,
+    const seerep_core_msgs::Polygon2D& polygon,
+    const bool queryFullyEncapsulated)
 {
   // generate rtree result container
   std::optional<std::vector<seerep_core_msgs::AabbIdPair>> rt_result =
@@ -308,18 +309,19 @@ CoreDataset::queryRtree(const seerep_core_msgs::rtree& rt,
     intersectionDegree(it->first, polygon, fullyEncapsulated,
                        partiallyEncapsulated);
 
-    // check thoroughly if a image has been passed and check whether the
-    // corresponding Frustum is in the polygon
-    // partial encapsulation is pre-condition for the case
-    // if the aabb of the data, which is a upper bound for the check, is
-    // already encapsulated we can skip the check
-    // if (partialEncapsulation && !fullEncapsulation)
-    // {
-    //   if (isPreciselyFullEncapsulated())
-    //   {
-    //     fullEncapsulation = true;
-    //   }
-    // }
+    auto ts_frame_points = coreDatatype.getPolygonConstraintPoints(it->second);
+    if (ts_frame_points.has_value())
+    {
+      auto points_vec = std::vector<seerep_core_msgs::Point>(
+          ts_frame_points->points.begin(), ts_frame_points->points.end());
+      // transform frame from the camera coordinate system to the map frame
+      points_vec =
+          m_tfOverview->transform(ts_frame_points->frame_id, m_frameId,
+                                  ts_frame_points->timestamp.seconds,
+                                  ts_frame_points->timestamp.nanos, points_vec);
+
+      // check if these point are enclosed by the query polygon
+    }
 
     // if there is no intersection between the result and the user's
     // request, remove it from the iterator

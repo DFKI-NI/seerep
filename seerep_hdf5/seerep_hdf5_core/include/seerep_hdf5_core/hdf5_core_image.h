@@ -12,6 +12,7 @@
 // seerep_msgs
 #include <seerep_msgs/dataset_indexable.h>
 #include <seerep_msgs/label_category.h>
+#include <seerep_msgs/timestamp_frame_points.h>
 
 // std
 #include <boost/geometry.hpp>
@@ -94,10 +95,13 @@ public:
    * @brief Get points which should get constraint by the query polygon,
    *  otherwise the data is not fullyEncapsulated by the polygon
    *
+   * @param uuid_entry provide a uuid to be used for retrieving the camera uuid
+   *
    * @return the points which should get checked and the frame as a string in
    *  which they should be checked
    */
-  frame_to_points_mapping getPolygonConstraintPoints();
+  std::optional<seerep_core_msgs::TimestampFramePoints>
+  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry);
 
   /**
    * @brief Write generals labels based on C++ data structures to HdF5
@@ -141,6 +145,21 @@ public:
    * @return const std::string path to the image dataset
    */
   const std::string getHdf5DataSetPath(const std::string& id) const;
+
+  /**
+   * @brief Compute the frustum corner points from the camera_intrinsics uuid
+   *
+   * @param cameraintrinsics_uuid
+   *
+   * @return the frustum corner points ordered as follows:
+   *  1. near plane camera origin point (0,0,0)
+   *  2. far plane top left
+   *  3. far plane top right
+   *  4. far plane bottom left
+   *  5. far plane bottom rigth
+   */
+  std::array<seerep_core_msgs::Point, 5>
+  computeFrustumPoints(const std::string& camintrinsics_uuid);
 
   /**
    * @brief Computes the frustum for given camera intrinsic parameters and stores

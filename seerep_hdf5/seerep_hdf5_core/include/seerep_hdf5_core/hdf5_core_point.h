@@ -10,6 +10,7 @@
 
 // seerep_msgs
 #include <seerep_msgs/dataset_indexable.h>
+#include <seerep_msgs/timestamp_frame_points.h>
 
 // std
 #include <boost/geometry.hpp>
@@ -42,7 +43,8 @@ public:
    *
    * @return a empty vector and string
    */
-  frame_to_points_mapping getPolygonConstraintPoints();
+  std::optional<seerep_core_msgs::TimestampFramePoints>
+  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry);
 
 public:
   inline static const std::string RAWDATA = "rawdata";
