@@ -14,6 +14,9 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost REQUIRED)
 
+find_package(CGAL REQUIRED)
+set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
+
 set(MY_PROTO_FILES
     protos/boundingbox.proto
     protos/camera_intrinsics.proto

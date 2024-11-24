@@ -71,38 +71,41 @@ std::optional<seerep_core_msgs::TimestampFramePoints>
 Hdf5CoreImage::getPolygonConstraintPoints(
     std::optional<boost::uuids::uuid> uuid_entry)
 {
-  if (uuid_entry.has_value())
+  if (!uuid_entry.has_value())
   {
-    std::string hdf5DataGroupPath =
-        getHdf5GroupPath(boost::uuids::to_string(uuid_entry.value()));
-
-    auto dataGroupPtr = getHdf5Group(hdf5DataGroupPath);
-
-    // fetch the camera_intrinsics directly
-    auto camintrinsics_uuid = readAttributeFromHdf5<std::string>(
-        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::CAMERA_INTRINSICS_UUID,
-        hdf5DataGroupPath);
-
-    auto frame_id = readAttributeFromHdf5<std::string>(
-        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_FRAME_ID,
-        hdf5DataGroupPath);
-
-    // retrieve timestamp from image
-    auto stamp_seconds = readAttributeFromHdf5<int>(
-        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_STAMP_SECONDS,
-        hdf5DataGroupPath);
-
-    auto stamp_nanos = readAttributeFromHdf5<int>(
-        *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_STAMP_NANOS,
-        hdf5DataGroupPath);
-
-    seerep_core_msgs::Timestamp ts{ stamp_seconds,
-                                    static_cast<uint32_t>(stamp_nanos) };
-
-    auto points = this->computeFrustumPoints(camintrinsics_uuid);
-
-    return seerep_core_msgs::TimestampFramePoints{ ts, points, frame_id };
+    // TODO throw exception
+    return std::nullopt;
   }
+  std::string hdf5DataGroupPath =
+      getHdf5GroupPath(boost::uuids::to_string(uuid_entry.value()));
+
+  auto dataGroupPtr = getHdf5Group(hdf5DataGroupPath);
+
+  // fetch the camera_intrinsics directly
+  auto camintrinsics_uuid = readAttributeFromHdf5<std::string>(
+      *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::CAMERA_INTRINSICS_UUID,
+      hdf5DataGroupPath);
+
+  auto frame_id = readAttributeFromHdf5<std::string>(
+      *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_FRAME_ID,
+      hdf5DataGroupPath);
+
+  // retrieve timestamp from image
+  auto stamp_seconds = readAttributeFromHdf5<int>(
+      *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_STAMP_SECONDS,
+      hdf5DataGroupPath);
+
+  auto stamp_nanos = readAttributeFromHdf5<int>(
+      *dataGroupPtr, seerep_hdf5_core::Hdf5CoreImage::HEADER_STAMP_NANOS,
+      hdf5DataGroupPath);
+
+  seerep_core_msgs::Timestamp ts{ stamp_seconds,
+                                  static_cast<uint32_t>(stamp_nanos) };
+
+  auto points = this->computeFrustumPoints(camintrinsics_uuid);
+  auto mesh = this->computeFrustumMesh(points);
+
+  return seerep_core_msgs::TimestampFramePoints{ ts, SurfaceMesh{}, frame_id };
 }
 
 void Hdf5CoreImage::writeLabels(
@@ -173,18 +176,52 @@ Hdf5CoreImage::computeFrustumPoints(const std::string& camintrinsics_uuid)
   double far_fov_y = (far_plane_dist * ci.width) / ci.intrinsic_matrix[4];
 
   seerep_core_msgs::Point near_p{ 0, 0, 0 };
-  seerep_core_msgs::Point far_topleft{ far_fov_x / 2, far_fov_y / 2,
-                                       far_plane_dist };
-  seerep_core_msgs::Point far_topright{ -far_fov_x / 2, far_fov_y / 2,
-                                        far_plane_dist };
-  seerep_core_msgs::Point far_bottomleft{ far_fov_x / 2, -far_fov_y / 2,
-                                          far_plane_dist };
-  seerep_core_msgs::Point far_bottomright{ -far_fov_x / 2, -far_fov_y / 2,
-                                           far_plane_dist };
+  seerep_core_msgs::Point far_topleft{ static_cast<float>(far_fov_x / 2),
+                                       static_cast<float>(far_fov_y / 2),
+                                       static_cast<float>(far_plane_dist) };
+
+  seerep_core_msgs::Point far_topright{ static_cast<float>(-far_fov_x / 2),
+                                        static_cast<float>(far_fov_y / 2),
+                                        static_cast<float>(far_plane_dist) };
+
+  seerep_core_msgs::Point far_bottomleft{ static_cast<float>(far_fov_x / 2),
+                                          static_cast<float>(-far_fov_y / 2),
+                                          static_cast<float>(far_plane_dist) };
+
+  seerep_core_msgs::Point far_bottomright{ static_cast<float>(-far_fov_x / 2),
+                                           static_cast<float>(-far_fov_y / 2),
+                                           static_cast<float>(far_plane_dist) };
 
   return std::array<seerep_core_msgs::Point, 5>{ near_p, far_topleft,
                                                  far_topright, far_bottomleft,
                                                  far_bottomright };
+}
+
+SurfaceMesh
+Hdf5CoreImage::computeFrustumMesh(std::array<seerep_core_msgs::Point, 5>& points)
+{
+  SurfaceMesh mesh;
+  auto o = mesh.add_vertex(
+      CGPoint_3{ points[0].get<0>(), points[0].get<1>(), points[0].get<2>() });
+
+  auto tl = mesh.add_vertex(
+      CGPoint_3{ points[1].get<0>(), points[1].get<1>(), points[1].get<2>() });
+
+  auto tr = mesh.add_vertex(
+      CGPoint_3{ points[2].get<0>(), points[2].get<1>(), points[2].get<2>() });
+
+  auto bl = mesh.add_vertex(
+      CGPoint_3{ points[3].get<0>(), points[3].get<1>(), points[3].get<2>() });
+
+  auto br = mesh.add_vertex(
+      CGPoint_3{ points[4].get<0>(), points[4].get<1>(), points[4].get<2>() });
+
+  mesh.add_face(o, tl, tr);
+  mesh.add_face(o, tr, br);
+  mesh.add_face(o, br, bl);
+  mesh.add_face(o, bl, tl);
+  mesh.add_face(tl, tr, br, bl);
+  return mesh;
 }
 
 void Hdf5CoreImage::computeFrustumBB(const std::string& camintrinsics_uuid,

@@ -130,13 +130,13 @@ bool CoreTf::canTransform(const std::string& sourceFrame,
                                  ros::Time(timeSecs, timeNanos));
 }
 
-std::vector<seerep_core_msgs::Point>
+std::vector<CGPoint_3>
 CoreTf::transform(const std::string& sourceFrame,
                   const std::string& targetFrame, const int64_t& timeSecs,
                   const int64_t& timeNanos,
-                  const std::vector<seerep_core_msgs::Point>& points)
+                  const std::vector<std::reference_wrapper<CGPoint_3>>& points)
 {
-  std::vector<seerep_core_msgs::Point> transformed_points;
+  std::vector<CGPoint_3> transformed_points;
   if (this->canTransform(sourceFrame, targetFrame, timeSecs, timeNanos))
   {
     auto tf =
@@ -151,12 +151,14 @@ CoreTf::transform(const std::string& sourceFrame,
 
     for (auto&& p : points)
     {
-      tf2::Vector3 vec{ p.get<0>(), p.get<1>(), p.get<2>() };
+      tf2::Vector3 vec{ p.get().x().exact().convert_to<double>(),
+                        p.get().y().exact().convert_to<double>(),
+                        p.get().z().exact().convert_to<double>() };
+
       tf2::Vector3 vec_target = tf2_tf * vec;
 
-      seerep_core_msgs::Point p_target{ static_cast<float>(vec_target.getX()),
-                                        static_cast<float>(vec_target.getY()),
-                                        static_cast<float>(vec_target.getZ()) };
+      CGPoint_3 p_target{ vec_target.getX(), vec_target.getY(),
+                          vec_target.getZ() };
 
       transformed_points.push_back(p_target);
     }

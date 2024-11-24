@@ -27,6 +27,11 @@
 
 namespace seerep_hdf5_core
 {
+
+using ExactKernel = CGAL::Exact_predicates_exact_constructions_kernel;
+using CGPoint_3 = ExactKernel::Point_3;
+using SurfaceMesh = CGAL::Surface_mesh<CGPoint_3>;
+
 /**
  * @brief Helper struct to summarize the general attributes of an image
  *
@@ -156,10 +161,12 @@ public:
    *  2. far plane top left
    *  3. far plane top right
    *  4. far plane bottom left
-   *  5. far plane bottom rigth
+   *  5. far plane bottom right
    */
   std::array<seerep_core_msgs::Point, 5>
   computeFrustumPoints(const std::string& camintrinsics_uuid);
+
+  SurfaceMesh computeFrustumMesh(std::array<seerep_core_msgs::Point, 5>& points);
 
   /**
    * @brief Computes the frustum for given camera intrinsic parameters and stores

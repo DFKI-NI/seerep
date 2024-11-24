@@ -22,12 +22,19 @@
 #include <tf2/buffer_core.h>
 #include <tf2/transform_datatypes.h>
 
+// CGAL
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+
 // logging
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/trivial.hpp>
 
 namespace seerep_core
 {
+
+using ExactKernel = CGAL::Exact_predicates_exact_constructions_kernel;
+using CGPoint_3 = CGAL::Point_3<ExactKernel>;
+
 /**
  * @brief This is the class handling the TF buffer
  *
@@ -100,10 +107,10 @@ public:
    *
    * @return the transformed points
    */
-  std::vector<seerep_core_msgs::Point>
+  std::vector<CGPoint_3>
   transform(const std::string& sourceFrame, const std::string& targetFrame,
             const int64_t& timeSecs, const int64_t& timeNanos,
-            const std::vector<seerep_core_msgs::Point>& points);
+            const std::vector<std::reference_wrapper<CGPoint_3>>& points);
 
   /**
    * @brief Returns a vector of all frames stored in the TF tree by the TF buffer

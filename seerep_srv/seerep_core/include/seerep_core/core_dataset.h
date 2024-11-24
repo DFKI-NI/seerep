@@ -3,6 +3,8 @@
 
 #include <CGAL/Boolean_set_operations_2.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Surface_mesh.h>
+#include <CGAL/polygon_mesh_processing.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -29,7 +31,11 @@
 #include <boost/uuid/uuid_generators.hpp>  // generators
 #include <boost/uuid/uuid_io.hpp>          // streaming operators etc.
 
-typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
+typedef CGAL::Exact_predicates_exact_constructions_kernel ExactKernel;
+typedef CGAL::Point_3<ExactKernel> CGPoint_3;
+typedef CGAL::Surface_mesh<CGPoint_3> SurfaceMesh;
+typedef CGAL::Polygon_2<ExactKernel> CGPolygon_2;
+typedef CGAL::Point_2<ExactKernel> CGPoint_2;
 
 namespace seerep_core
 {
@@ -250,7 +256,7 @@ private:
    * @return true The polygon abides by CGAL requirements
    * @return false The polygon does not abide by CGAL requirements
    */
-  bool verifyPolygonIntegrity(CGAL::Polygon_2<Kernel>& polygon_cgal);
+  bool verifyPolygonIntegrity(CGAL::Polygon_2<ExactKernel>& polygon_cgal);
 
   /**
    * @brief transforms the bounding box to the datasets frameId (mostly the map
@@ -268,7 +274,7 @@ private:
    * @param polygon core msg polygon
    * @return CGAL::Polygon_2<Kernel> cgal polygon
    */
-  CGAL::Polygon_2<Kernel>
+  CGAL::Polygon_2<ExactKernel>
   toCGALPolygon(const seerep_core_msgs::Polygon2D& polygon);
 
   /**
@@ -277,7 +283,7 @@ private:
    * @param polygon core msg aabb
    * @return CGAL::Polygon_2<Kernel> cgal aabb
    */
-  CGAL::Polygon_2<Kernel> toCGALPolygon(const seerep_core_msgs::AABB& aabb);
+  CGAL::Polygon_2<ExactKernel> toCGALPolygon(const seerep_core_msgs::AABB& aabb);
 
   /**
    * @brief determine if the axis aligned bounding box is fully or paritally
@@ -294,18 +300,27 @@ private:
                           const seerep_core_msgs::Polygon2D& polygon,
                           bool& fullEncapsulation, bool& partialEncapsulation);
 
-  void intersectionDegreeCgalPolygons(CGAL::Polygon_2<Kernel> cgal1,
-                                      CGAL::Polygon_2<Kernel> cgal2,
+  void intersectionDegreeCgalPolygons(CGAL::Polygon_2<ExactKernel> cgal1,
+                                      CGAL::Polygon_2<ExactKernel> cgal2,
                                       bool z_partially,
                                       bool checkIfFullyEncapsulated,
                                       bool& fullEncapsulation,
                                       bool& partialEncapsulation);
 
-  void intersectionDegreeAABBinPolygon(
-      const seerep_core_msgs::AABB& aabb,
-      const seerep_core_msgs::Polygon2D& polygon,
-      CGAL::Polygon_2<Kernel> aabb_cgal, CGAL::Polygon_2<Kernel> polygon_cgal,
+  void
+  intersectionDegreeAABBinPolygon(const seerep_core_msgs::AABB& aabb,
+                                  const seerep_core_msgs::Polygon2D& polygon,
+                                  CGAL::Polygon_2<ExactKernel> aabb_cgal,
+                                  CGAL::Polygon_2<ExactKernel> polygon_cgal,
+                                  bool& fullEncapsulation,
+                                  bool& partialEncapsulation);
+
+  void checkIntersectionWithZExtrudedPolygon(
+      const SurfaceMesh& enclosedMesh,
+      const seerep_core_msgs::Polygon2D& enclosingPolygon,
       bool& fullEncapsulation, bool& partialEncapsulation);
+
+  CGPolygon_2 reduceZDimension(const SurfaceMesh& mesh);
 
   void getUuidsFromMap(
       std::unordered_map<boost::uuids::uuid, std::vector<boost::uuids::uuid>,
