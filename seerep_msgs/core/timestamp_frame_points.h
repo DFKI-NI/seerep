@@ -16,8 +16,8 @@ using SurfaceMesh = CGAL::Surface_mesh<ExactKernel::Point_3>;
 struct TimestampFramePoints
 {
   seerep_core_msgs::Timestamp timestamp;
-  SurfaceMesh mesh;
   std::string frame_id;
+  SurfaceMesh mesh;
 };
 }  // namespace seerep_core_msgs
 

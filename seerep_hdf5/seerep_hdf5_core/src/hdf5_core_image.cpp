@@ -105,7 +105,7 @@ Hdf5CoreImage::getPolygonConstraintPoints(
   auto points = this->computeFrustumPoints(camintrinsics_uuid);
   auto mesh = this->computeFrustumMesh(points);
 
-  return seerep_core_msgs::TimestampFramePoints{ ts, SurfaceMesh{}, frame_id };
+  return seerep_core_msgs::TimestampFramePoints{ ts, frame_id, mesh };
 }
 
 void Hdf5CoreImage::writeLabels(
@@ -197,10 +197,10 @@ Hdf5CoreImage::computeFrustumPoints(const std::string& camintrinsics_uuid)
                                                  far_bottomright };
 }
 
-SurfaceMesh
+CGSurfaceMesh
 Hdf5CoreImage::computeFrustumMesh(std::array<seerep_core_msgs::Point, 5>& points)
 {
-  SurfaceMesh mesh;
+  CGSurfaceMesh mesh;
   auto o = mesh.add_vertex(
       CGPoint_3{ points[0].get<0>(), points[0].get<1>(), points[0].get<2>() });
 

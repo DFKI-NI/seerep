@@ -312,7 +312,7 @@ std::optional<std::vector<seerep_core_msgs::AabbIdPair>> CoreDataset::queryRtree
     auto ts_frame_points = coreDatatype.getPolygonConstraintPoints(it->second);
     if (ts_frame_points.has_value())
     {
-      SurfaceMesh& mesh = ts_frame_points->mesh;
+      CGSurfaceMesh& mesh = ts_frame_points->mesh;
       std::vector<std::reference_wrapper<CGPoint_3>> ref_points;
 
       for (auto& idx : mesh.vertices())
@@ -1023,21 +1023,26 @@ void CoreDataset::intersectionDegreeAABBinPolygon(
                                  fullEncapsulation, partialEncapsulation);
 }
 
-SurfaceMesh toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
+CGSurfaceMesh
+CoreDataset::toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
 {
-  using VertexIndex = SurfaceMesh::Vertex_index;
+  using CGVertexIndex = CGSurfaceMesh::Vertex_index;
 
   if (seerep_polygon.vertices.size() <= 2)
   {
     // TODO: throw error
+    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
+        << "seerep_core_msgs::Polygon2D has not enough vertices to be expanded "
+           "to a full 3D SurfaceMesh";
   }
 
-  SurfaceMesh surface_mesh;
+  CGSurfaceMesh surface_mesh;
 
-  std::vector<VertexIndex> lower_surface, upper_surface;
+  std::vector<CGVertexIndex> lower_surface, upper_surface;
+  CGVertexIndex topInitial, bottomInitial;
+  CGVertexIndex topFirst, bottomFirst, topSecond, bottomSecond;
 
-  VertexIndex topInitial, bottomInitial;
-  VertexIndex topFirst, bottomFirst, topSecond, bottomSecond;
+  CGFaceIdx face_desc;
 
   auto z_top = seerep_polygon.z + seerep_polygon.height;
   auto& z_bottom = seerep_polygon.z;
@@ -1049,8 +1054,8 @@ SurfaceMesh toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
   bottomInitial = bottomFirst =
       surface_mesh.add_vertex(CGPoint_3{ x, y, z_bottom });
 
-  // the vertices are connected in order; It is assumed that the last point of
-  // the polygon connects to the first
+  // the vertices are connected in order; The assumption is that the last point
+  // of the polygon connects to the first
   for (size_t j = 1; j < verts.size(); ++j)
   {
     x = verts[j].get<0>();
@@ -1059,26 +1064,61 @@ SurfaceMesh toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
     bottomSecond = surface_mesh.add_vertex(CGPoint_3{ x, y, z_bottom });
 
     upper_surface.push_back(topFirst);
-    upper_surface.push_back(topSecond);
     lower_surface.push_back(bottomFirst);
-    lower_surface.push_back(bottomSecond);
-    surface_mesh.add_face(topFirst, topSecond, bottomFirst, bottomSecond);
+    face_desc =
+        surface_mesh.add_face(topFirst, topSecond, bottomSecond, bottomFirst);
+
+    if (face_desc == CGSurfaceMesh::null_face())
+    {
+      throw std::invalid_argument(
+          "Could not add side face from Polygon2d to SurfaceMesh correctly!");
+    }
 
     topFirst = topSecond;
     bottomFirst = bottomSecond;
   }
-  surface_mesh.add_face(topFirst, topInitial, bottomFirst, bottomInitial);
-  surface_mesh.add_face(lower_surface);
-  surface_mesh.add_face(upper_surface);
+  upper_surface.push_back(topFirst);
+  lower_surface.push_back(bottomFirst);
+
+  face_desc =
+      surface_mesh.add_face(topFirst, topInitial, bottomInitial, bottomFirst);
+  if (face_desc == CGSurfaceMesh::null_face())
+  {
+    throw std::invalid_argument("Could not add last side face from Polygon2d "
+                                "to SurfaceMesh correctly!");
+  }
+  face_desc = surface_mesh.add_face(lower_surface);
+  if (face_desc == CGSurfaceMesh::null_face())
+  {
+    throw std::invalid_argument("Could not add lower surface face from "
+                                "Polygon2d to SurfaceMesh correctly!");
+  }
+
+  std::reverse(upper_surface.begin(), upper_surface.end());
+
+  face_desc = surface_mesh.add_face(upper_surface);
+  if (face_desc == CGSurfaceMesh::null_face())
+  {
+    throw std::invalid_argument("Could not add upper surface face from "
+                                "Polygon2d to SurfaceMesh correctly!");
+  }
   return surface_mesh;
 }
 
 void CoreDataset::checkIntersectionWithZExtrudedPolygon(
-    const SurfaceMesh& enclosedMesh,
+    CGSurfaceMesh enclosedMesh,
     const seerep_core_msgs::Polygon2D& enclosingPolygon,
     bool& fullEncapsulation, bool& partialEncapsulation)
 {
   using CGAL::Polygon_mesh_processing::triangulate_faces;
+
+  if (!enclosedMesh.is_valid() || enclosedMesh.is_empty())
+  {
+    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
+        << "enclosedMesh passed to checkIntersectionWithZExtrudedPolygon "
+           "is either not valid or empty";
+    return;
+  }
 
   fullEncapsulation = false;
   partialEncapsulation = false;
@@ -1087,15 +1127,15 @@ void CoreDataset::checkIntersectionWithZExtrudedPolygon(
   // get highest and lowest point of innerPoints
   auto highestPoint = std::max_element(
       enclosedMesh.vertices_begin(), enclosedMesh.vertices_end(),
-      [&enclosedMesh](const SurfaceMesh::Vertex_index& p1,
-                      const SurfaceMesh::Vertex_index& p2) {
+      [&enclosedMesh](const CGSurfaceMesh::Vertex_index& p1,
+                      const CGSurfaceMesh::Vertex_index& p2) {
         return enclosedMesh.point(p1).z() < enclosedMesh.point(p2).z();
       });
 
   auto lowestPoint = std::min_element(
       enclosedMesh.vertices_begin(), enclosedMesh.vertices_end(),
-      [&enclosedMesh](const SurfaceMesh::Vertex_index& p1,
-                      const SurfaceMesh::Vertex_index& p2) {
+      [&enclosedMesh](const CGSurfaceMesh::Vertex_index& p1,
+                      const CGSurfaceMesh::Vertex_index& p2) {
         return enclosedMesh.point(p1).z() > enclosedMesh.point(p2).z();
       });
 
@@ -1133,15 +1173,27 @@ void CoreDataset::checkIntersectionWithZExtrudedPolygon(
 
   auto enclosingMesh = toSurfaceMesh(enclosingPolygon);
 
+  if (!enclosingMesh.is_valid() || enclosingMesh.is_empty())
+  {
+    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
+        << "enclosingMesh derived from enclosingPolygon"
+           "passed to checkIntersectionWithZExtrudedPolygon "
+           "is either not valid or empty";
+    return;
+  }
+
+  triangulate_faces(enclosedMesh);
+  triangulate_faces(enclosingMesh);
+
   partialEncapsulation =
       CGAL::Polygon_mesh_processing::do_intersect(enclosedMesh, enclosingMesh);
 }
 
-CGPolygon_2 CoreDataset::reduceZDimension(const SurfaceMesh& mesh)
+CGPolygon_2 CoreDataset::reduceZDimension(const CGSurfaceMesh& mesh)
 {
   CGPolygon_2 poly2;
 
-  for (SurfaceMesh::Vertex_index idx : mesh.vertices())
+  for (CGSurfaceMesh::Vertex_index idx : mesh.vertices())
   {
     CGPoint_2 p{ mesh.point(idx).x(), mesh.point(idx).y() };
     poly2.push_back(p);

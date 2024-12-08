@@ -3,8 +3,9 @@
 
 #include <CGAL/Boolean_set_operations_2.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Polygon_mesh_processing/intersection.h>
+#include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
 #include <CGAL/Surface_mesh.h>
-#include <CGAL/polygon_mesh_processing.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -33,9 +34,10 @@
 
 typedef CGAL::Exact_predicates_exact_constructions_kernel ExactKernel;
 typedef CGAL::Point_3<ExactKernel> CGPoint_3;
-typedef CGAL::Surface_mesh<CGPoint_3> SurfaceMesh;
+typedef CGAL::Surface_mesh<CGPoint_3> CGSurfaceMesh;
 typedef CGAL::Polygon_2<ExactKernel> CGPolygon_2;
 typedef CGAL::Point_2<ExactKernel> CGPoint_2;
+typedef CGSurfaceMesh::Face_index CGFaceIdx;
 
 namespace seerep_core
 {
@@ -315,12 +317,18 @@ private:
                                   bool& fullEncapsulation,
                                   bool& partialEncapsulation);
 
+  /**
+   *
+   *
+   */
   void checkIntersectionWithZExtrudedPolygon(
-      const SurfaceMesh& enclosedMesh,
+      CGSurfaceMesh enclosedMesh,
       const seerep_core_msgs::Polygon2D& enclosingPolygon,
       bool& fullEncapsulation, bool& partialEncapsulation);
 
-  CGPolygon_2 reduceZDimension(const SurfaceMesh& mesh);
+  CGPolygon_2 reduceZDimension(const CGSurfaceMesh& mesh);
+
+  CGSurfaceMesh toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon);
 
   void getUuidsFromMap(
       std::unordered_map<boost::uuids::uuid, std::vector<boost::uuids::uuid>,
