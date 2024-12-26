@@ -25,6 +25,12 @@
 
 namespace seerep_hdf5_core
 {
+
+using ExactKernel = CGAL::Exact_predicates_exact_constructions_kernel;
+using CGPoint_3 = ExactKernel::Point_3;
+using CGSurfaceMesh = CGAL::Surface_mesh<CGPoint_3>;
+using CGVertexIndex = CGSurfaceMesh::Vertex_index;
+
 class Hdf5CorePointCloud : public Hdf5CoreGeneral,
                            public Hdf5CoreDatatypeInterface
 {
@@ -45,7 +51,21 @@ public:
    * @return a empty vector and string
    */
   std::optional<seerep_core_msgs::TimestampFramePoints>
-  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry);
+  getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry);
+
+  /**
+   * @brief create mesh given a AABB
+   *
+   * @param bb_coords the coordinates of the AABB in the following order:
+   *        0: min_corner_x
+   *        1: min_corner_y
+   *        2: min_corner_z
+   *        3: max_corner_x
+   *        4: max_corner_y
+   *        5: max_corner_z
+   *  @return the surface mesh based on these coordinates
+   */
+  CGSurfaceMesh createMeshFromAABB(const std::vector<float>& bb_coords);
 
 public:
   // image / pointcloud attribute keys

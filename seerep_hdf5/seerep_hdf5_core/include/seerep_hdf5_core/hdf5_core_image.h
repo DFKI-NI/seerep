@@ -106,7 +106,7 @@ public:
    *  which they should be checked
    */
   std::optional<seerep_core_msgs::TimestampFramePoints>
-  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry);
+  getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry);
 
   /**
    * @brief Write generals labels based on C++ data structures to HdF5

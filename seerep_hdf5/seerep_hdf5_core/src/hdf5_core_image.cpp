@@ -68,16 +68,10 @@ std::vector<std::string> Hdf5CoreImage::getDatasetUuids()
 }
 
 std::optional<seerep_core_msgs::TimestampFramePoints>
-Hdf5CoreImage::getPolygonConstraintPoints(
-    std::optional<boost::uuids::uuid> uuid_entry)
+Hdf5CoreImage::getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry)
 {
-  if (!uuid_entry.has_value())
-  {
-    // TODO throw exception
-    return std::nullopt;
-  }
   std::string hdf5DataGroupPath =
-      getHdf5GroupPath(boost::uuids::to_string(uuid_entry.value()));
+      getHdf5GroupPath(boost::uuids::to_string(uuid_entry));
 
   auto dataGroupPtr = getHdf5Group(hdf5DataGroupPath);
 

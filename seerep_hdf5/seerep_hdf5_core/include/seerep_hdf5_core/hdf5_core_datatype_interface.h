@@ -34,7 +34,7 @@ public:
    * noop) and the frame_id in which they need to get transformed from
    */
   virtual std::optional<seerep_core_msgs::TimestampFramePoints>
-  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry) = 0;
+  getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry) = 0;
 };
 
 }  // namespace seerep_hdf5_core

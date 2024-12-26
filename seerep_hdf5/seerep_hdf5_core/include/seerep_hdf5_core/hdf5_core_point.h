@@ -44,7 +44,7 @@ public:
    * @return a empty vector and string
    */
   std::optional<seerep_core_msgs::TimestampFramePoints>
-  getPolygonConstraintPoints(std::optional<boost::uuids::uuid> uuid_entry);
+  getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry);
 
 public:
   inline static const std::string RAWDATA = "rawdata";

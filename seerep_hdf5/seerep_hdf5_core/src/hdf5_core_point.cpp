@@ -65,9 +65,9 @@ std::vector<std::string> Hdf5CorePoint::getDatasetUuids()
 }
 
 std::optional<seerep_core_msgs::TimestampFramePoints>
-Hdf5CorePoint::getPolygonConstraintPoints(
-    std::optional<boost::uuids::uuid> uuid_entry)
+Hdf5CorePoint::getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry)
 {
+  (void)uuid_entry;
   return std::nullopt;
 }
 
