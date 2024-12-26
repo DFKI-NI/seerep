@@ -67,13 +67,21 @@ std::vector<std::string> Hdf5CoreImage::getDatasetUuids()
   return getGroupDatasets(HDF5_GROUP_IMAGE);
 }
 
-std::optional<seerep_core_msgs::TimestampFramePoints>
-Hdf5CoreImage::getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry)
+std::optional<seerep_core_msgs::TimestampFrameMesh>
+Hdf5CoreImage::getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry)
 {
-  std::string hdf5DataGroupPath =
-      getHdf5GroupPath(boost::uuids::to_string(uuid_entry));
+  std::string uuid_str = boost::uuids::to_string(uuid_entry);
+  std::string hdf5DataGroupPath = getHdf5GroupPath(uuid_str);
 
   auto dataGroupPtr = getHdf5Group(hdf5DataGroupPath);
+
+  if (dataGroupPtr == nullptr)
+  {
+    throw std::invalid_argument("Hdf5DatasetPath not present for uuid " +
+                                uuid_str + "! Skipping precise check...");
+    BOOST_LOG_SEV(this->m_logger, boost::log::trivial::severity_level::warning);
+    return std::nullopt;
+  }
 
   // fetch the camera_intrinsics directly
   auto camintrinsics_uuid = readAttributeFromHdf5<std::string>(
@@ -99,7 +107,7 @@ Hdf5CoreImage::getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry)
   auto points = this->computeFrustumPoints(camintrinsics_uuid);
   auto mesh = this->computeFrustumMesh(points);
 
-  return seerep_core_msgs::TimestampFramePoints{ ts, frame_id, mesh };
+  return seerep_core_msgs::TimestampFrameMesh{ ts, frame_id, mesh };
 }
 
 void Hdf5CoreImage::writeLabels(

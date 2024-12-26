@@ -4,6 +4,10 @@
 // highfive
 #include <highfive/H5File.hpp>
 
+// CGAL
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Surface_mesh.h>
+
 // seerep_hdf5_core
 #include "hdf5_core_cameraintrinsics.h"
 #include "hdf5_core_datatype_interface.h"
@@ -12,7 +16,7 @@
 // seerep_msgs
 #include <seerep_msgs/dataset_indexable.h>
 #include <seerep_msgs/label_category.h>
-#include <seerep_msgs/timestamp_frame_points.h>
+#include <seerep_msgs/timestamp_frame_mesh.h>
 
 // std
 #include <boost/geometry.hpp>
@@ -97,16 +101,17 @@ public:
   std::vector<std::string> getDatasetUuids();
 
   /**
-   * @brief Get points which should get constraint by the query polygon,
-   *  otherwise the data is not fullyEncapsulated by the polygon
+   * @brief Get a timestamp-frameid-mesh struct which will be subject to
+   *  encapsulation checks of a query polygon
    *
-   * @param uuid_entry provide a uuid to be used for retrieving the camera uuid
+   * The mesh is created from the camera frustum.
    *
-   * @return the points which should get checked and the frame as a string in
-   *  which they should be checked
+   * @param uuid_entry of the image datatype entry to fetch the data from
+   *
+   * @return a struct containing the timestamp, frame_id of the data and the mesh itself
    */
-  std::optional<seerep_core_msgs::TimestampFramePoints>
-  getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry);
+  std::optional<seerep_core_msgs::TimestampFrameMesh>
+  getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry);
 
   /**
    * @brief Write generals labels based on C++ data structures to HdF5
@@ -154,7 +159,8 @@ public:
   /**
    * @brief Compute the frustum corner points from the camera_intrinsics uuid
    *
-   * @param cameraintrinsics_uuid
+   * @param cameraintrinsics_uuid to fetch the cameraintrinsics,
+   * from which the frustum should be based on
    *
    * @return the frustum corner points ordered as follows:
    *  1. near plane camera origin point (0,0,0)
@@ -166,6 +172,18 @@ public:
   std::array<seerep_core_msgs::Point, 5>
   computeFrustumPoints(const std::string& camintrinsics_uuid);
 
+  /**
+   * @brief create a surface mesh from given frustum points
+   *
+   * @param points frustum corner points ordered as follows:
+   *  1. near plane camera origin point (0,0,0)
+   *  2. far plane top left
+   *  3. far plane top right
+   *  4. far plane bottom left
+   *  5. far plane bottom right
+   *
+   * @return the created SurfaceMesh
+   */
   CGSurfaceMesh
   computeFrustumMesh(std::array<seerep_core_msgs::Point, 5>& points);
 

@@ -61,9 +61,8 @@ std::vector<std::string> Hdf5CorePointCloud::getDatasetUuids()
   return getGroupDatasets(HDF5_GROUP_POINTCLOUD);
 }
 
-std::optional<seerep_core_msgs::TimestampFramePoints>
-Hdf5CorePointCloud::getPolygonConstraintPoints(
-    const boost::uuids::uuid& uuid_entry)
+std::optional<seerep_core_msgs::TimestampFrameMesh>
+Hdf5CorePointCloud::getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry)
 {
   const std::scoped_lock lock(*m_write_mtx);
 
@@ -73,7 +72,9 @@ Hdf5CorePointCloud::getPolygonConstraintPoints(
 
   if (!m_file->exist(hdf5DatasetPath))
   {
-    // TODO throw exception
+    throw std::invalid_argument("Hdf5DatasetPath not present for uuid " +
+                                uuid_str + "! Skipping precise check...");
+    BOOST_LOG_SEV(this->m_logger, boost::log::trivial::severity_level::info);
     return std::nullopt;
   }
 
@@ -88,8 +89,8 @@ Hdf5CorePointCloud::getPolygonConstraintPoints(
 
   readHeader(uuid_str, *group_ptr, head);
 
-  return seerep_core_msgs::TimestampFramePoints{ head.timestamp, head.frameId,
-                                                 this->createMeshFromAABB(bb) };
+  return seerep_core_msgs::TimestampFrameMesh{ head.timestamp, head.frameId,
+                                               this->createMeshFromAABB(bb) };
 }
 
 CGSurfaceMesh
@@ -158,6 +159,7 @@ Hdf5CorePointCloud::createMeshFromAABB(const std::vector<float>& bb_coords)
     throw std::invalid_argument(
         "Could not add top face from AABB to SurfaceMesh correctly!");
   }
+  return mesh;
 }
 
 }  // namespace seerep_hdf5_core

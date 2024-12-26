@@ -116,7 +116,7 @@ set(MY_CORE_MSGS
     ${CMAKE_CURRENT_SOURCE_DIR}/core/sparql_query.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/timeinterval.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/timestamp.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/timestamp_frame_points.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/timestamp_frame_mesh.h
 )
 
 add_library(SeerepCoreMsgsTarget INTERFACE)

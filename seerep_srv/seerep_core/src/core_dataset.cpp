@@ -309,7 +309,7 @@ std::optional<std::vector<seerep_core_msgs::AabbIdPair>> CoreDataset::queryRtree
     intersectionDegree(it->first, polygon, fullyEncapsulated,
                        partiallyEncapsulated);
 
-    auto ts_frame_points = coreDatatype.getPolygonConstraintPoints(it->second);
+    auto ts_frame_points = coreDatatype.getPolygonConstraintMesh(it->second);
     if (ts_frame_points.has_value())
     {
       CGSurfaceMesh& mesh = ts_frame_points->mesh;
@@ -1030,10 +1030,9 @@ CoreDataset::toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
 
   if (seerep_polygon.vertices.size() <= 2)
   {
-    // TODO: throw error
-    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
-        << "seerep_core_msgs::Polygon2D has not enough vertices to be expanded "
-           "to a full 3D SurfaceMesh";
+    throw std::invalid_argument(
+        "seerep_core_msgs::Polygon2D has not enough vertices to be expanded"
+        " to a full 3D SurfaceMesh");
   }
 
   CGSurfaceMesh surface_mesh;

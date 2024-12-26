@@ -7,9 +7,6 @@
 #include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
 #include <CGAL/Surface_mesh.h>
 
-#include <algorithm>
-#include <cstdint>
-#include <functional>
 #include <optional>
 #include <unordered_set>
 
@@ -302,6 +299,18 @@ private:
                           const seerep_core_msgs::Polygon2D& polygon,
                           bool& fullEncapsulation, bool& partialEncapsulation);
 
+  /**
+   * @brief check whether cgal1 is encapsulated by cgal2
+   *
+   * @param cgal1 the (possibly) encapsulated polygon
+   * @param cgal2 the (possibly) encapsulating polygon
+   * @param z_partially a flag to indicate partial height encapsulation by cgal2
+   * @param checkIfFullyEncapsulated whether to check fully encapsulation
+   * @param fullEncapsulation is set to false when fullEncapsulation is not
+   * valid. This flag is only set, when checkIfFullyEncapsulated is true
+   * @param partialEncapsulation is set to true, when cgal1 is partially
+   * encapsulated by cgal2
+   */
   void intersectionDegreeCgalPolygons(CGAL::Polygon_2<ExactKernel> cgal1,
                                       CGAL::Polygon_2<ExactKernel> cgal2,
                                       bool z_partially,
@@ -309,6 +318,17 @@ private:
                                       bool& fullEncapsulation,
                                       bool& partialEncapsulation);
 
+  /**
+   * @brief check if and to what degree AABB is encapsulated by polygon
+   *
+   * @param aabb the aabb to perform the check on
+   * @param polygon the query polygon
+   * @param aabb_cgal the core msgs aabb converted to a CGAL polygon
+   * @param polygon_cgal the core msgs polygon converted to a CGAL polygon
+   * @param fullEncapsulation whether aabb is fully encapsulated by the polygon
+   * @param partialEncapsulation whether the aabb and polygon intersect on a
+   *    subset of them in some way
+   */
   void
   intersectionDegreeAABBinPolygon(const seerep_core_msgs::AABB& aabb,
                                   const seerep_core_msgs::Polygon2D& polygon,
@@ -318,16 +338,39 @@ private:
                                   bool& partialEncapsulation);
 
   /**
+   * @brief checks whether the enclosedMesh is really enclosed by the
+   * enclosingPolygon
    *
+   * Both the enclosedMesh and enclosingPolygon have to be convex objects
    *
+   * @param enclosedMesh mesh to check whether it is enclosed by the polygon
+   * @param enclosingPolygon polygon which is enclosing object
+   * @param fullEncapsulation flag which is set when enclosedMesh is fully
+   * encapsulated by the enclosingPolygon
+   * @param partialEncapsulation flag which is set when enclosedMesh is
+   * partially encapsulated by the enclosingPolygon
    */
   void checkIntersectionWithZExtrudedPolygon(
       CGSurfaceMesh enclosedMesh,
       const seerep_core_msgs::Polygon2D& enclosingPolygon,
       bool& fullEncapsulation, bool& partialEncapsulation);
 
+  /**
+   * @brief Creates a 2DPolygon by removing the 3rd dimension from the points of the Mesh
+   *
+   * @param mesh the input mesh
+   *
+   * @return the reduced mesh as a CGAL 2D polygon
+   */
   CGPolygon_2 reduceZDimension(const CGSurfaceMesh& mesh);
 
+  /**
+   * @brief creates a SurfaceMesh from a seerep polygon 2D
+   *
+   * @param seerep_polygon the polygon to create the mesh from
+   *
+   * @return the resulting SurfaceMesh
+   */
   CGSurfaceMesh toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon);
 
   void getUuidsFromMap(

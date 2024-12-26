@@ -3,7 +3,7 @@
 
 // seerep-msgs
 #include <seerep_msgs/dataset_indexable.h>
-#include <seerep_msgs/timestamp_frame_points.h>
+#include <seerep_msgs/timestamp_frame_mesh.h>
 
 // std
 #include <boost/uuid/uuid.hpp>
@@ -33,8 +33,8 @@ public:
    * @return the points which should get checked (if empty this should be a
    * noop) and the frame_id in which they need to get transformed from
    */
-  virtual std::optional<seerep_core_msgs::TimestampFramePoints>
-  getPolygonConstraintPoints(const boost::uuids::uuid& uuid_entry) = 0;
+  virtual std::optional<seerep_core_msgs::TimestampFrameMesh>
+  getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry) = 0;
 };
 
 }  // namespace seerep_hdf5_core
