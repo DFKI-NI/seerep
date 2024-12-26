@@ -328,7 +328,7 @@ std::optional<std::vector<seerep_core_msgs::AabbIdPair>> CoreDataset::queryRtree
 
       for (auto& idx : mesh.vertices())
       {
-        mesh.point(idx) = ref_points[idx.idx()];
+        mesh.point(idx) = points_vec[idx.idx()];
       }
 
       // check if these point are enclosed by the query polygon
