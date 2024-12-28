@@ -138,7 +138,7 @@ void Hdf5PbPointCloud::writePoints(HighFive::Group& object,
 
   std::array<float, 3> min, max;
   min[0] = min[1] = min[2] = std::numeric_limits<float>::max();
-  max[0] = max[1] = max[2] = std::numeric_limits<float>::min();
+  max[0] = max[1] = max[2] = std::numeric_limits<float>::lowest();
 
   for (unsigned int i = 0; i < cloud.height(); i++)
   {

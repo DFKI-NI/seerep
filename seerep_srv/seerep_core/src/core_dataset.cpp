@@ -208,10 +208,10 @@ CoreDataset::polygonToAABB(const seerep_core_msgs::Polygon2D& polygon)
   seerep_core_msgs::Point min, max;
 
   bg::set<0>(min, std::numeric_limits<float>::max());
-  bg::set<0>(max, std::numeric_limits<float>::min());
+  bg::set<0>(max, std::numeric_limits<float>::lowest());
 
   bg::set<1>(min, std::numeric_limits<float>::max());
-  bg::set<1>(max, std::numeric_limits<float>::min());
+  bg::set<1>(max, std::numeric_limits<float>::lowest());
 
   bg::set<2>(min, polygon.z);
   bg::set<2>(max, polygon.height + polygon.z);
@@ -1235,9 +1235,9 @@ CoreDataset::getSpatialBounds(std::vector<seerep_core_msgs::Datatype> datatypes)
   seerep_core_msgs::AABB overallbb;
 
   // set the minimum to minimum possible for the datatype
-  overallbb.max_corner().set<0>(std::numeric_limits<float>::min());
-  overallbb.max_corner().set<1>(std::numeric_limits<float>::min());
-  overallbb.max_corner().set<2>(std::numeric_limits<float>::min());
+  overallbb.max_corner().set<0>(std::numeric_limits<float>::lowest());
+  overallbb.max_corner().set<1>(std::numeric_limits<float>::lowest());
+  overallbb.max_corner().set<2>(std::numeric_limits<float>::lowest());
 
   // set the maximum for the maximum possible for the datatype
   overallbb.min_corner().set<0>(std::numeric_limits<float>::max());

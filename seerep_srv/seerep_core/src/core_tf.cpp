@@ -136,6 +136,11 @@ CoreTf::transform(const std::string& sourceFrame,
                   const int64_t& timeNanos,
                   const std::vector<std::reference_wrapper<CGPoint_3>>& points)
 {
+  if (sourceFrame == targetFrame)
+  {
+    return std::vector<CGPoint_3>{ points.begin(), points.end() };
+  }
+
   std::vector<CGPoint_3> transformed_points;
   if (this->canTransform(sourceFrame, targetFrame, timeSecs, timeNanos))
   {
