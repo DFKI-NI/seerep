@@ -218,11 +218,26 @@ Hdf5CoreImage::computeFrustumMesh(std::array<seerep_core_msgs::Point, 5>& points
   auto br = mesh.add_vertex(
       CGPoint_3{ points[4].get<0>(), points[4].get<1>(), points[4].get<2>() });
 
-  mesh.add_face(o, tl, tr);
-  mesh.add_face(o, tr, br);
-  mesh.add_face(o, br, bl);
-  mesh.add_face(o, bl, tl);
-  mesh.add_face(tl, tr, br, bl);
+  std::vector<CGSurfaceMesh::Face_index> descriptors;
+
+  descriptors.push_back(mesh.add_face(o, tl, tr));
+  descriptors.push_back(mesh.add_face(o, tr, br));
+  descriptors.push_back(mesh.add_face(o, br, bl));
+  descriptors.push_back(mesh.add_face(o, bl, tl));
+  // for whatever reason the face needs to be constructed in this way,
+  // when the add_face returns a null_face() ALWAYS try reversing the vertex
+  // order
+  descriptors.push_back(mesh.add_face(bl, br, tr, tl));
+
+  // check if any of the faces was not constructed properly
+  if (std::find_if(descriptors.begin(), descriptors.end(), [](auto elem) {
+        return elem == CGSurfaceMesh::null_face();
+      }) != descriptors.end())
+  {
+    throw std::invalid_argument("Could not create the faces for the "
+                                "SurfaceMesh from the camera frustum points!");
+  }
+
   return mesh;
 }
 

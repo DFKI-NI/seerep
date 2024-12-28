@@ -117,48 +117,30 @@ Hdf5CorePointCloud::createMeshFromAABB(const std::vector<float>& bb_coords)
     verts.push_back(mesh.add_vertex(p));
   }
 
+  std::vector<CGSurfaceMesh::Face_index> descriptors;
+
   // bottom plane
-  auto desc = mesh.add_face(verts[0], verts[4], verts[6], verts[2]);
-  if (desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument(
-        "Could not add bottom face from AABB to SurfaceMesh correctly!");
-  }
+  descriptors.push_back(mesh.add_face(verts[0], verts[4], verts[6], verts[2]));
   // front plane
-  mesh.add_face(verts[0], verts[1], verts[3], verts[2]);
-  if (desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument(
-        "Could not add front face from AABB to SurfaceMesh correctly!");
-  }
+  descriptors.push_back(mesh.add_face(verts[0], verts[1], verts[3], verts[2]));
   // left plane
-  mesh.add_face(verts[4], verts[5], verts[1], verts[0]);
-  if (desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument(
-        "Could not add left face from AABB to SurfaceMesh correctly!");
-  }
+  descriptors.push_back(mesh.add_face(verts[4], verts[5], verts[1], verts[0]));
   // back plane
-  mesh.add_face(verts[4], verts[5], verts[7], verts[6]);
-  if (desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument(
-        "Could not add back face from AABB to SurfaceMesh correctly!");
-  }
+  descriptors.push_back(mesh.add_face(verts[4], verts[5], verts[7], verts[6]));
   // right plane
-  mesh.add_face(verts[2], verts[3], verts[7], verts[6]);
-  if (desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument(
-        "Could not add right face from AABB to SurfaceMesh correctly!");
-  }
+  descriptors.push_back(mesh.add_face(verts[2], verts[3], verts[7], verts[6]));
   // top plane
-  mesh.add_face(verts[1], verts[5], verts[7], verts[3]);
-  if (desc == CGSurfaceMesh::null_face())
+  descriptors.push_back(mesh.add_face(verts[1], verts[5], verts[7], verts[3]));
+
+  // check if any of the faces was not constructed properly
+  if (std::find_if(descriptors.begin(), descriptors.end(), [](auto elem) {
+        return elem == CGSurfaceMesh::null_face();
+      }) != descriptors.end())
   {
-    throw std::invalid_argument(
-        "Could not add top face from AABB to SurfaceMesh correctly!");
+    throw std::invalid_argument("Could not create the faces for the "
+                                "SurfaceMesh from the pointcloud AABB!");
   }
+
   return mesh;
 }
 

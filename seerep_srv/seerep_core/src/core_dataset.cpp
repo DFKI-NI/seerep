@@ -1079,28 +1079,28 @@ CoreDataset::toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
   upper_surface.push_back(topFirst);
   lower_surface.push_back(bottomFirst);
 
-  face_desc =
-      surface_mesh.add_face(topFirst, topInitial, bottomInitial, bottomFirst);
-  if (face_desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument("Could not add last side face from Polygon2d "
-                                "to SurfaceMesh correctly!");
-  }
-  face_desc = surface_mesh.add_face(lower_surface);
-  if (face_desc == CGSurfaceMesh::null_face())
-  {
-    throw std::invalid_argument("Could not add lower surface face from "
-                                "Polygon2d to SurfaceMesh correctly!");
-  }
+  std::vector<CGSurfaceMesh::Face_index> descriptors;
 
+  descriptors.push_back(
+      surface_mesh.add_face(topFirst, topInitial, bottomInitial, bottomFirst));
+  descriptors.push_back(surface_mesh.add_face(lower_surface));
+
+  // for whatever reason the vertices need to be reversed for the latest face to
+  // construct the mesh correctly.
+  // If the construction of the latest face does not work ALWAYS try
+  // reversing the vertex order
   std::reverse(upper_surface.begin(), upper_surface.end());
+  descriptors.push_back(surface_mesh.add_face(upper_surface));
 
-  face_desc = surface_mesh.add_face(upper_surface);
-  if (face_desc == CGSurfaceMesh::null_face())
+  // check if any of the faces was not constructed properly
+  if (std::find_if(descriptors.begin(), descriptors.end(), [](auto elem) {
+        return elem == CGSurfaceMesh::null_face();
+      }) != descriptors.end())
   {
-    throw std::invalid_argument("Could not add upper surface face from "
-                                "Polygon2d to SurfaceMesh correctly!");
+    throw std::invalid_argument("Could not upper/lower or latest side face from"
+                                " Polygon2d to SurfaceMesh correctly!");
   }
+
   return surface_mesh;
 }
 
