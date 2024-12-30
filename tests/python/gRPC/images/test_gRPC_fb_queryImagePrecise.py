@@ -127,7 +127,7 @@ def send_tf(
     return serialized_tf
 
 
-def test_gRPC_fb_queryImagePreciseIntersect(grpc_channel, project_setup):
+def test_queryImagePreciseIntersect(grpc_channel, project_setup):
     _, proj_uuid = project_setup
 
     timestamp_secs = 1661336507
@@ -182,7 +182,7 @@ def test_gRPC_fb_queryImagePreciseIntersect(grpc_channel, project_setup):
 
 # this test should detect no intersection with the precise method
 # but would fail with the AABB approximation
-def test_gRPC_fb_queryImagePreciseNoIntersect(grpc_channel, project_setup):
+def test_queryImagePreciseNoIntersect(grpc_channel, project_setup):
     _, proj_uuid = project_setup
 
     timestamp_secs = 1661336507

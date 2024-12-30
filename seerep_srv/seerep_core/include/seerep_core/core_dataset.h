@@ -338,22 +338,20 @@ private:
                                   bool& partialEncapsulation);
 
   /**
-   * @brief checks whether the enclosedMesh is really enclosed by the
+   * @brief checks whether the enclosedMesh is really partially enclosed by the
    * enclosingPolygon
    *
    * Both the enclosedMesh and enclosingPolygon have to be convex objects
    *
    * @param enclosedMesh mesh to check whether it is enclosed by the polygon
    * @param enclosingPolygon polygon which is enclosing object
-   * @param fullEncapsulation flag which is set when enclosedMesh is fully
-   * encapsulated by the enclosingPolygon
    * @param partialEncapsulation flag which is set when enclosedMesh is
-   * partially encapsulated by the enclosingPolygon
+   *   partially encapsulated by the enclosingPolygon
    */
-  void checkIntersectionWithZExtrudedPolygon(
+  void checkPartialIntersectionWithZExtrudedPolygon(
       CGSurfaceMesh enclosedMesh,
       const seerep_core_msgs::Polygon2D& enclosingPolygon,
-      bool& fullEncapsulation, bool& partialEncapsulation);
+      bool& partialEncapsulation);
 
   /**
    * @brief Creates a 2DPolygon by removing the 3rd dimension from the points of the Mesh

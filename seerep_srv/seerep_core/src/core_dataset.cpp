@@ -309,31 +309,45 @@ std::optional<std::vector<seerep_core_msgs::AabbIdPair>> CoreDataset::queryRtree
     intersectionDegree(it->first, polygon, fullyEncapsulated,
                        partiallyEncapsulated);
 
-    auto ts_frame_points = coreDatatype.getPolygonConstraintMesh(it->second);
-    if (ts_frame_points.has_value())
+    // precise check
+    // This is only needed when fullyEncapsulated = false and
+    // partiallyEncapsulated = true as the aabb approximation through
+    // intersectionDegree is a upper bound for the real 3D object
+    // If fullyEncapsulated = true => the real object is inside the approx and thus
+    // inside the query
+    // If both are false using the approx for the real object
+    // the values must be false aswell
+    // True for partialEncapsulation and false for fullyEncapsulated must
+    // be verified, as this could be indeed false with the real object
+    if (partiallyEncapsulated == true && fullyEncapsulated == false)
     {
-      CGSurfaceMesh& mesh = ts_frame_points->mesh;
-      std::vector<std::reference_wrapper<CGPoint_3>> ref_points;
-
-      for (auto& idx : mesh.vertices())
+      auto ts_frame_points = coreDatatype.getPolygonConstraintMesh(it->second);
+      if (ts_frame_points.has_value())
       {
-        ref_points.push_back(mesh.point(idx));
+        CGSurfaceMesh& mesh = ts_frame_points->mesh;
+        std::vector<std::reference_wrapper<CGPoint_3>> ref_points;
+
+        for (auto& idx : mesh.vertices())
+        {
+          ref_points.push_back(mesh.point(idx));
+        }
+
+        // transform points from another coordinate system to the map frame of the project
+        auto points_vec =
+            m_tfOverview->transform(ts_frame_points->frame_id, m_frameId,
+                                    ts_frame_points->timestamp.seconds,
+                                    ts_frame_points->timestamp.nanos,
+                                    ref_points);
+
+        for (auto& idx : mesh.vertices())
+        {
+          mesh.point(idx) = points_vec[idx.idx()];
+        }
+
+        // check if these point are enclosed by the query polygon
+        checkPartialIntersectionWithZExtrudedPolygon(mesh, polygon,
+                                                     partiallyEncapsulated);
       }
-
-      // transform points from another coordinate system to the map frame of the project
-      auto points_vec =
-          m_tfOverview->transform(ts_frame_points->frame_id, m_frameId,
-                                  ts_frame_points->timestamp.seconds,
-                                  ts_frame_points->timestamp.nanos, ref_points);
-
-      for (auto& idx : mesh.vertices())
-      {
-        mesh.point(idx) = points_vec[idx.idx()];
-      }
-
-      // check if these point are enclosed by the query polygon
-      checkIntersectionWithZExtrudedPolygon(mesh, polygon, fullyEncapsulated,
-                                            partiallyEncapsulated);
     }
 
     // if there is no intersection between the result and the user's
@@ -1104,10 +1118,10 @@ CoreDataset::toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
   return surface_mesh;
 }
 
-void CoreDataset::checkIntersectionWithZExtrudedPolygon(
+void CoreDataset::checkPartialIntersectionWithZExtrudedPolygon(
     CGSurfaceMesh enclosedMesh,
     const seerep_core_msgs::Polygon2D& enclosingPolygon,
-    bool& fullEncapsulation, bool& partialEncapsulation)
+    bool& partialEncapsulation)
 {
   using CGAL::Polygon_mesh_processing::triangulate_faces;
 
@@ -1115,59 +1129,8 @@ void CoreDataset::checkIntersectionWithZExtrudedPolygon(
   {
     BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
         << "enclosedMesh passed to checkIntersectionWithZExtrudedPolygon "
-           "is either not valid or empty";
+           "is either not valid or empty. Skipping precise check...";
     return;
-  }
-
-  fullEncapsulation = false;
-  partialEncapsulation = false;
-
-  // check if the enclosing polygon encloses every point
-  // get highest and lowest point of innerPoints
-  auto highestPoint = std::max_element(
-      enclosedMesh.vertices_begin(), enclosedMesh.vertices_end(),
-      [&enclosedMesh](const CGSurfaceMesh::Vertex_index& p1,
-                      const CGSurfaceMesh::Vertex_index& p2) {
-        return enclosedMesh.point(p1).z() < enclosedMesh.point(p2).z();
-      });
-
-  auto lowestPoint = std::min_element(
-      enclosedMesh.vertices_begin(), enclosedMesh.vertices_end(),
-      [&enclosedMesh](const CGSurfaceMesh::Vertex_index& p1,
-                      const CGSurfaceMesh::Vertex_index& p2) {
-        return enclosedMesh.point(p1).z() > enclosedMesh.point(p2).z();
-      });
-
-  const double& z_low = enclosingPolygon.z;
-  double z_high = z_low + enclosingPolygon.height;
-
-  double p_low =
-      enclosedMesh.point(*lowestPoint).z().exact().convert_to<double>();
-  double p_high =
-      enclosedMesh.point(*highestPoint).z().exact().convert_to<double>();
-
-  // fully enclosed if all points of the enclosedMesh are contained in the enclosing Polygon
-  if ((z_low <= p_low && z_low <= p_high && z_high >= p_low && z_high >= p_high))
-  {
-    auto enclosedPolygon2CG = reduceZDimension(enclosedMesh);
-    auto enclosingPolygon2CG = toCGALPolygon(enclosingPolygon);
-
-    bool xy_bounded = true;
-    for (CGPolygon_2::Vertex_iterator vi = enclosedPolygon2CG.vertices_begin();
-         vi != enclosedPolygon2CG.vertices_end(); ++vi)
-    {
-      if (enclosingPolygon2CG.bounded_side(*vi) == CGAL::ON_UNBOUNDED_SIDE)
-      {
-        xy_bounded = false;
-        break;
-      }
-    }
-    if (xy_bounded)
-    {
-      fullEncapsulation = true;
-      partialEncapsulation = true;
-      return;
-    }
   }
 
   auto enclosingMesh = toSurfaceMesh(enclosingPolygon);
@@ -1177,7 +1140,7 @@ void CoreDataset::checkIntersectionWithZExtrudedPolygon(
     BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
         << "enclosingMesh derived from enclosingPolygon"
            "passed to checkIntersectionWithZExtrudedPolygon "
-           "is either not valid or empty";
+           "is either not valid or empty. Skipping precise check...";
     return;
   }
 
