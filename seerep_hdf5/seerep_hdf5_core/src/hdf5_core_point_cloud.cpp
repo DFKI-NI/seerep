@@ -120,18 +120,17 @@ Hdf5CorePointCloud::createMeshFromAABB(const std::vector<float>& bb_coords)
   std::vector<CGSurfaceMesh::Face_index> descriptors;
 
   // bottom plane
-  descriptors.push_back(mesh.add_face(verts[0], verts[4], verts[6], verts[2]));
-  // front plane
   descriptors.push_back(mesh.add_face(verts[0], verts[1], verts[3], verts[2]));
+  // front plane
+  descriptors.push_back(mesh.add_face(verts[2], verts[6], verts[4], verts[0]));
   // left plane
-  descriptors.push_back(mesh.add_face(verts[4], verts[5], verts[1], verts[0]));
+  descriptors.push_back(mesh.add_face(verts[3], verts[7], verts[6], verts[2]));
   // back plane
-  descriptors.push_back(mesh.add_face(verts[4], verts[5], verts[7], verts[6]));
+  descriptors.push_back(mesh.add_face(verts[1], verts[5], verts[7], verts[3]));
   // right plane
-  descriptors.push_back(mesh.add_face(verts[2], verts[3], verts[7], verts[6]));
+  descriptors.push_back(mesh.add_face(verts[4], verts[5], verts[1], verts[0]));
   // top plane
-  // for whatever the reason the vertices have to be reversed...
-  descriptors.push_back(mesh.add_face(verts[3], verts[7], verts[5], verts[1]));
+  descriptors.push_back(mesh.add_face(verts[6], verts[7], verts[5], verts[4]));
 
   std::vector<CGSurfaceMesh::Face_index>::iterator idx;
   // check if any of the faces was not constructed properly
@@ -139,10 +138,11 @@ Hdf5CorePointCloud::createMeshFromAABB(const std::vector<float>& bb_coords)
          return elem == CGSurfaceMesh::null_face();
        })) != descriptors.end())
   {
-    throw std::invalid_argument("Could not create the faces for the "
-                                "SurfaceMesh from the pointcloud AABB! "
-                                "First null_face index: " +
-                                boost::lexical_cast<std::string>(idx->idx()));
+    throw std::invalid_argument(
+        "Could not create the faces for the "
+        "SurfaceMesh from the pointcloud AABB! "
+        "First null_face index: " +
+        std::to_string(std::distance(descriptors.begin(), idx)));
   }
 
   return mesh;
