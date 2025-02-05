@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=70", "setuptools_scm[toml]>=8.1","grpcio-tools==1.53.2"]
+requires = ["setuptools>=70", "setuptools_scm[toml]>=8.1","grpcio-tools==1.67.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -15,7 +15,7 @@ authors = [
 dependencies = [
     "protobuf == 4.21.12",
     "flatbuffers == 22.12.6",
-    "grpcio == 1.53.2",
+    "grpcio == 1.67.0",
 ]
 dynamic = ["version"]
 
