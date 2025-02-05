@@ -1,6 +1,6 @@
 pre-commit==3.5.0
 flatbuffers==22.12.6
-protobuf== 4.21.12
+protobuf==5.26.1
 grpcio-tools==1.67.0
 grpcio==1.67.0
 imageio==2.20.0
