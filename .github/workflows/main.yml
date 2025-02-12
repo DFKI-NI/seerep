@@ -21,7 +21,7 @@ env:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   create-ids:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     outputs:
       base_id: ${{ steps.tagsBase.outputs.base_id }}
       server_id: ${{ steps.tagsServer.outputs.server_id }}
@@ -61,7 +61,7 @@ jobs:
   build-docker:
     needs: create-ids
     # run on ubuntu
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
 
@@ -106,7 +106,7 @@ jobs:
 
   build-code:
     needs: [build-docker, create-ids]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.create-ids.outputs.base_id }}:${{ needs.create-ids.outputs.version }}
       options: --user root
@@ -146,7 +146,7 @@ jobs:
   build-docker-deployment:
     needs: [build-code, create-ids]
     # run on ubuntu
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
     if: ${{ GitHub.event_name != 'pull_request'}}
