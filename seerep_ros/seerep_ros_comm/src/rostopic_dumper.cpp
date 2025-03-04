@@ -85,10 +85,16 @@ void Hdf5Node::subscribe()
           topic, 0, &Hdf5Node::callback, this);
       subscribers_[topic] = sub;
     }
-    else if (info.datatype == "tf2_msgs/TFMessage")
+    else if (topic == "/tf")
     {
       ros::Subscriber sub = nh_.subscribe<tf2_msgs::TFMessage>(
           topic, 0, &Hdf5Node::callback, this);
+      subscribers_[topic] = sub;
+    }
+    else if (topic == "/tf_static")
+    {
+      ros::Subscriber sub = nh_.subscribe<tf2_msgs::TFMessage>(
+          topic, 0, &Hdf5Node::callback_static, this);
       subscribers_[topic] = sub;
     }
     else
@@ -110,7 +116,12 @@ void Hdf5Node::callback(const sensor_msgs::PointCloud2ConstPtr& pointCloud)
 
 void Hdf5Node::callback(const tf2_msgs::TFMessageConstPtr& tfMessage)
 {
-  hdf5Ros_->dump(*tfMessage);
+  hdf5Ros_->dump(*tfMessage, false);
+}
+
+void Hdf5Node::callback_static(const tf2_msgs::TFMessageConstPtr& tfMessage)
+{
+  hdf5Ros_->dump(*tfMessage, true);
 }
 
 } /* Namespace seerep_ros_examples */

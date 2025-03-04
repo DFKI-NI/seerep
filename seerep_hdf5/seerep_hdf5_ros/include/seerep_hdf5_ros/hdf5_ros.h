@@ -78,7 +78,7 @@ public:
    *
    * @param tfMessage TF message to store.
    */
-  void dump(const tf2_msgs::TFMessage& tfMessage);
+  void dump(const tf2_msgs::TFMessage& tfMessage, bool is_static);
 
   /**
    * @brief Store a transform message to hdf5.

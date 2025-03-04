@@ -84,11 +84,17 @@ include_directories(
 )
 
 add_executable(rostopic_dumper src/rostopic_dumper.cpp)
+add_executable(rosbag_dumper_aitf src/rosbag_dumper_aitf.cpp)
 add_executable(rosbag_dumper src/rosbag_dumper.cpp)
 add_executable(point_dumper src/point_dumper.cpp)
 
 add_dependencies(
   rostopic_dumper ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+add_dependencies(
+  rosbag_dumper_aitf ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
 
@@ -108,6 +114,17 @@ target_link_libraries(
   ${seerep_hdf5_ros_LIBRARIES}
   ${SeerepHdf5Core_LIBRARIES}
   ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${Boost_LOG_LIBRARY}
+  ${Boost_LOG_SETUP_LIBRARY}
+)
+
+target_link_libraries(
+  rosbag_dumper_aitf
+  ${SeerepCore_LIBRARIES}
+  ${seerep_hdf5_ros_LIBRARIES}
+  ${catkin_LIBRARIES}
+  gRPC::grpc++_reflection
   ${Boost_LIBRARIES}
   ${Boost_LOG_LIBRARY}
   ${Boost_LOG_SETUP_LIBRARY}
@@ -144,7 +161,10 @@ target_link_libraries(
 )
 
 install(
-  TARGETS rostopic_dumper rosbag_dumper point_dumper
+  TARGETS rostopic_dumper
+          rosbag_dumper_aitf
+          rosbag_dumper
+          point_dumper
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}

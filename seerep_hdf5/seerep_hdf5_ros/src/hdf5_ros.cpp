@@ -186,13 +186,22 @@ void Hdf5Ros::dump(const sensor_msgs::PointCloud2& pcl)
       ->write(std::move(pcl.data.data()));
 }
 
-void Hdf5Ros::dump(const tf2_msgs::TFMessage& tf2_msg)
+void Hdf5Ros::dump(const tf2_msgs::TFMessage& tf2_msg, bool is_static)
 {
+  std::string hdf5_group_tf;
+  if (is_static)
+  {
+    hdf5_group_tf = seerep_hdf5_core::Hdf5CoreTf::HDF5_GROUP_TF_STATIC;
+  }
+  else
+  {
+    hdf5_group_tf = seerep_hdf5_core::Hdf5CoreTf::HDF5_GROUP_TF;
+  }
   for (const auto& transform : tf2_msg.transforms)
   {
-    const std::string datagroupPath =
-        seerep_hdf5_core::Hdf5CoreTf::HDF5_GROUP_TF + "/" +
-        transform.header.frame_id + "_" + transform.child_frame_id;
+    const std::string datagroupPath = hdf5_group_tf + "/" +
+                                      transform.header.frame_id + "_" +
+                                      transform.child_frame_id;
 
     std::unique_ptr<HighFive::Group> group;
 

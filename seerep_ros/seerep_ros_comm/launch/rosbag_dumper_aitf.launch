@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<launch>
+    <arg name="bagPath" default="/seerep/seerep-data/data.bag"/>
+    <arg name="hdf5FolderPath" default="/seerep/seerep-data/"/>
+    <arg name="projectFrameId" default="map"/>
+    <arg name="projectName" default="testproject"/>
+    <arg name="projectUuid" default=""/>
+    <arg name="topicImage" default="/images"/>
+    <arg name="topicPc2" default="/pc"/>
+    <arg name="topicCameraIntrinsics" default="/camera_info"/>
+    <arg name="topicTf" default="/tf"/>
+    <arg name="topicTfStatic" default="/tf_static"/>
+    <arg name="maxViewingDistance" default="15.0"/>
+
+    <node name="seerep_ros_communication_rosbag_dumper" pkg="seerep_ros_comm" type="rosbag_dumper" output="screen">
+        <rosparam param="bagPath" subst_value="True">$(arg bagPath)</rosparam>
+        <rosparam param="hdf5FolderPath" subst_value="True">$(arg hdf5FolderPath)</rosparam>
+        <rosparam param="projectFrameId" subst_value="True">$(arg projectFrameId)</rosparam>
+        <rosparam param="projectName" subst_value="True">$(arg projectName)</rosparam>
+        <rosparam param="projectUuid" subst_value="True">$(arg projectUuid)</rosparam>
+        <rosparam param="topicImage" subst_value="True">$(arg topicImage)</rosparam>
+        <rosparam param="topicPc2" subst_value="True">$(arg topicPc2)</rosparam>
+        <rosparam param="topicCameraIntrinsics" subst_value="True">$(arg topicCameraIntrinsics)</rosparam>
+        <rosparam param="topicDetection" subst_value="True">$(arg topicDetection)</rosparam>
+        <rosparam param="topicTf" subst_value="True">$(arg topicTf)</rosparam>
+        <rosparam param="topicTfStatic" subst_value="True">$(arg topicTfStatic)</rosparam>
+        <rosparam param="maxViewingDistance" subst_value="True">$(arg maxViewingDistance)</rosparam>
+    </node>
+</launch>

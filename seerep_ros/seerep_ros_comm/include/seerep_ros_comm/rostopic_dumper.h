@@ -65,6 +65,7 @@ private:
   void callback(const sensor_msgs::Image::ConstPtr& msg);
   void callback(const sensor_msgs::PointCloud2::ConstPtr& msg);
   void callback(const tf2_msgs::TFMessage::ConstPtr& msg);
+  void callback_static(const tf2_msgs::TFMessage::ConstPtr& msg);
 };
 
 template <typename T>
