@@ -5,7 +5,7 @@
     <arg name="project_root_frame" default="map"/>
     <arg name="project_name" default="testproject"/>
     <arg name="max_viewing_distance" default="1.0"/>
-    <node name="seerep_ros_examples_hdf5_node" pkg="seerep_ros_examples" type="seerep_ros_examples_hdf5_node" output="screen">
+    <node name="seerep_ros_examples_hdf5_node" pkg="seerep_ros_comm" type="rostopic_dumper" output="screen">
         <rosparam param="topics" subst_value="True">$(arg topics)</rosparam>
         <rosparam param="path" subst_value="True">$(arg path)</rosparam>
         <rosparam param="project_root_frame" subst_value="True">$(arg project_root_frame)</rosparam>
