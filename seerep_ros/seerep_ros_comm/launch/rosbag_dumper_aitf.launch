@@ -12,7 +12,7 @@
     <arg name="topicTfStatic" default="/tf_static"/>
     <arg name="maxViewingDistance" default="15.0"/>
 
-    <node name="seerep_ros_communication_rosbag_dumper" pkg="seerep_ros_comm" type="rosbag_dumper" output="screen">
+    <node name="seerep_ros_communication_rosbag_dumper" pkg="seerep_ros_comm" type="rosbag_dumper_aitf" output="screen">
         <rosparam param="bagPath" subst_value="True">$(arg bagPath)</rosparam>
         <rosparam param="hdf5FolderPath" subst_value="True">$(arg hdf5FolderPath)</rosparam>
         <rosparam param="projectFrameId" subst_value="True">$(arg projectFrameId)</rosparam>
@@ -21,7 +21,6 @@
         <rosparam param="topicImage" subst_value="True">$(arg topicImage)</rosparam>
         <rosparam param="topicPc2" subst_value="True">$(arg topicPc2)</rosparam>
         <rosparam param="topicCameraIntrinsics" subst_value="True">$(arg topicCameraIntrinsics)</rosparam>
-        <rosparam param="topicDetection" subst_value="True">$(arg topicDetection)</rosparam>
         <rosparam param="topicTf" subst_value="True">$(arg topicTf)</rosparam>
         <rosparam param="topicTfStatic" subst_value="True">$(arg topicTfStatic)</rosparam>
         <rosparam param="maxViewingDistance" subst_value="True">$(arg maxViewingDistance)</rosparam>
