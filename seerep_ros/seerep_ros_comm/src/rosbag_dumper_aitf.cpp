@@ -49,10 +49,22 @@ void RosbagDumperAitf::iterateAndDumpImages(
   for (const rosbag::MessageInstance& m :
        rosbag::View(bag, rosbag::TopicQuery(topicImage)))
   {
-    sensor_msgs::Image::ConstPtr msg = m.instantiate<sensor_msgs::Image>();
-    if (msg != nullptr)
+    sensor_msgs::Image::ConstPtr raw_msg;
+    if (m.getDataType() == "sensor_msgs/CompressedImage")
     {
-      hdf5Ros->dump(*msg, cameraIntrinsicsUuid);
+      {
+        sensor_msgs::CompressedImage::ConstPtr msg =
+            m.instantiate<sensor_msgs::CompressedImage>();
+        raw_msg = convertCompressedImageToImage(msg);
+      }
+    }
+    else
+    {
+      raw_msg = m.instantiate<sensor_msgs::Image>();
+    }
+    if (raw_msg != nullptr)
+    {
+      hdf5Ros->dump(*raw_msg, cameraIntrinsicsUuid);
     }
     else
     {
@@ -104,6 +116,21 @@ void RosbagDumperAitf::iterateAndDumpTf(const std::string& topic,
       ROS_ERROR_STREAM("nullptr while iterating tf");
     }
   }
+}
+
+sensor_msgs::Image::ConstPtr RosbagDumperAitf::convertCompressedImageToImage(
+    const sensor_msgs::CompressedImage::ConstPtr& msg)
+{
+  // toCV
+  cv::Mat image = cv::imdecode(cv::Mat(msg->data), cv::IMREAD_COLOR);
+
+  // header
+  std_msgs::Header header = msg->header;
+  // to image
+  sensor_msgs::Image::ConstPtr img_msg =
+      cv_bridge::CvImage(header, "bgr8", image).toImageMsg();
+
+  return img_msg;
 }
 
 }  // namespace seerep_ros_comm

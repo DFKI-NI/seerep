@@ -16,6 +16,11 @@
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 
+// open cv
+#include <cv_bridge/cv_bridge.h>
+
+#include <opencv2/opencv.hpp>
+
 // uuid
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
@@ -46,6 +51,9 @@ private:
   void iterateAndDumpTf(const std::string& topicTf,
                         const std::string& topicTfStatic);
   void iterateAndDumpTf(const std::string& topicTf, const bool isStatic);
+
+  sensor_msgs::Image::ConstPtr convertCompressedImageToImage(
+      const sensor_msgs::CompressedImage::ConstPtr& msg);
 
   /* composition to the seerep_hdf5_ros interface */
   std::unique_ptr<seerep_hdf5_ros::Hdf5Ros> hdf5Ros;

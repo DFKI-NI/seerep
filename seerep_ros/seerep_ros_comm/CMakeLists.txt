@@ -21,10 +21,12 @@ find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(jsoncpp REQUIRED)
 find_package(CURL REQUIRED)
+find_package(OpenCV)
 
 find_package(
   catkin REQUIRED
-  COMPONENTS topic_tools
+  COMPONENTS cv_bridge
+             topic_tools
              std_msgs
              geometry_msgs
              geographic_msgs
@@ -52,6 +54,7 @@ catkin_package(
   include
   # LIBRARIES
   CATKIN_DEPENDS
+  cv_bridge
   std_msgs
   geometry_msgs
   geographic_msgs
@@ -81,6 +84,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${jsoncpp_INCLUDE_DIRS}
   ${CURL_INCLUDE_DIR}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 add_executable(rostopic_dumper src/rostopic_dumper.cpp)
@@ -128,6 +132,7 @@ target_link_libraries(
   ${Boost_LIBRARIES}
   ${Boost_LOG_LIBRARY}
   ${Boost_LOG_SETUP_LIBRARY}
+  ${OpenCV_LIBRARIES}
 )
 
 target_link_libraries(

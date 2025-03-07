@@ -42,6 +42,7 @@ RUN apt-get -qq update && apt-get -qq install -y --no-install-recommends -y \
         python3-osrf-pycommon \
         ros-noetic-vision-msgs \
         ros-noetic-geographic-msgs \
+        ros-noetic-cv-bridge \
         python3-pip \
         flex \
         bison \
