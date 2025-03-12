@@ -5,20 +5,35 @@ namespace seerep_ros_comm
 RosbagDumperAitf::RosbagDumperAitf(
     const std::string& bagPath, const std::string& hdf5FilePath,
     const std::string& projectFrameId, const std::string& projectName,
-    const std::string& topicImage, const std::string& topicPc2,
-    const std::string& topicCameraIntrinsics, const std::string& topicTf,
-    const std::string& topicTfStatic, double maxViewingDistance)
+    const std::vector<std::string>& topicsImage,
+    const std::vector<std::string>& topicsPc2,
+    const std::vector<std::string>& topicsCameraIntrinsics,
+    const std::string& topicTf, const std::string& topicTfStatic,
+    std::vector<double> maxViewingDistances)
 {
   hdf5Ros = std::make_unique<seerep_hdf5_ros::Hdf5Ros>(
       hdf5FilePath, projectFrameId, projectName);
 
   bag.open(bagPath);
 
-  std::string cameraIntrinsicsUuid =
-      getCameraIntrinsic(topicCameraIntrinsics, maxViewingDistance);
   iterateAndDumpTf(topicTf, topicTfStatic);
-  iterateAndDumpImages(topicImage, cameraIntrinsicsUuid);
-  iterateAndDumpPc2(topicPc2);
+
+  // Iterate over images and camera info topics
+
+  size_t index = 0;
+  for (const auto& topicImage : topicsImage)
+  {
+    std::string cameraIntrinsicsUuid = getCameraIntrinsic(
+        topicsCameraIntrinsics[index], maxViewingDistances[index]);
+
+    iterateAndDumpImages(topicImage, cameraIntrinsicsUuid);
+    ++index;
+  }
+  // Iterate over pc2 topcis
+  for (const auto& topicPc2 : topicsPc2)
+  {
+    iterateAndDumpPc2(topicPc2);
+  }
 }
 
 RosbagDumperAitf::~RosbagDumperAitf()
@@ -181,9 +196,9 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "seerep_ros_communication_rosbagDumperAitf");
   ros::NodeHandle privateNh("~");
 
-  std::string bagPath, projectFrameId, projectName, topicImage, topicPc2,
-      topicCameraIntrinsics, topicTf, topicTfStatic;
-  double maxViewingDistance;
+  std::string bagPath, projectFrameId, projectName, topicTf, topicTfStatic;
+  std::vector<std::string> topicsImage, topicsPc2, topicsCameraIntrinsics;
+  std::vector<double> maxViewingDistances;
 
   std::string projectUuid;
   const std::string hdf5FilePath = getHDF5FilePath(privateNh, projectUuid);
@@ -191,28 +206,47 @@ int main(int argc, char** argv)
   if (privateNh.getParam("bagPath", bagPath) &&
       privateNh.getParam("projectFrameId", projectFrameId) &&
       privateNh.getParam("projectName", projectName) &&
-      privateNh.getParam("topicImage", topicImage) &&
-      privateNh.getParam("topicPc2", topicPc2) &&
-      privateNh.getParam("topicCameraIntrinsics", topicCameraIntrinsics) &&
+      privateNh.getParam("topicImage", topicsImage) &&
+      privateNh.getParam("topicPc2", topicsPc2) &&
+      privateNh.getParam("topicCameraIntrinsics", topicsCameraIntrinsics) &&
       privateNh.getParam("topicTf", topicTf) &&
       privateNh.getParam("topicTfStatic", topicTfStatic) &&
-      privateNh.param<double>("maxViewingDistance", maxViewingDistance, 0.0))
+      privateNh.getParam("maxViewingDistance", maxViewingDistances))
   {
     ROS_INFO_STREAM("hdf5FilePath: " << hdf5FilePath);
     ROS_INFO_STREAM("bagPath: " << bagPath);
     ROS_INFO_STREAM("projectFrameId: " << projectFrameId);
     ROS_INFO_STREAM("projectName: " << projectName);
-    ROS_INFO_STREAM("topicImage: " << topicImage);
-    ROS_INFO_STREAM("topicPc2: " << topicPc2);
-    ROS_INFO_STREAM("topicCameraIntrinsics: " << topicCameraIntrinsics);
+    for (auto topicImage : topicsImage)
+    {
+      ROS_INFO_STREAM("topicImage: " << topicImage);
+    }
+    for (auto topicPc2 : topicsPc2)
+    {
+      ROS_INFO_STREAM("topicPc2: " << topicPc2);
+    }
+    for (auto topicCameraIntrinsics : topicsCameraIntrinsics)
+    {
+      ROS_INFO_STREAM("topicCameraIntrinsics: " << topicCameraIntrinsics);
+    }
     ROS_INFO_STREAM("topicTf: " << topicTf);
     ROS_INFO_STREAM("topicTfStatic: " << topicTfStatic);
-    ROS_INFO_STREAM("maxViewingDistance: " << maxViewingDistance);
-
-    seerep_ros_comm::RosbagDumperAitf rosbagDumperAitf(
-        bagPath, hdf5FilePath, projectFrameId, projectName, topicImage,
-        topicPc2, topicCameraIntrinsics, topicTf, topicTfStatic,
-        maxViewingDistance);
+    for (double maxViewingDistance : maxViewingDistances)
+    {
+      ROS_INFO_STREAM("maxViewingDistance: " << maxViewingDistance);
+    }
+    if (maxViewingDistances.size() == topicsCameraIntrinsics.size() &&
+        topicsImage.size() == topicsCameraIntrinsics.size())
+    {
+      seerep_ros_comm::RosbagDumperAitf rosbagDumperAitf(
+          bagPath, hdf5FilePath, projectFrameId, projectName, topicsImage,
+          topicsPc2, topicsCameraIntrinsics, topicTf, topicTfStatic,
+          maxViewingDistances);
+    }
+    else
+    {
+      ROS_ERROR_STREAM("Check length of image related params!");
+    }
   }
   else
   {

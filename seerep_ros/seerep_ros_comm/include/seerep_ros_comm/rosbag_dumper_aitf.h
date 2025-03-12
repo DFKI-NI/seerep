@@ -36,10 +36,11 @@ public:
   RosbagDumperAitf(const std::string& bagPath, const std::string& hdf5FilePath,
                    const std::string& projectFrameId,
                    const std::string& projectName,
-                   const std::string& topicImage, const std::string& topicPc2,
-                   const std::string& topicCameraIntrinsics,
+                   const std::vector<std::string>& topicsImage,
+                   const std::vector<std::string>& topicsPc2,
+                   const std::vector<std::string>& topicsCameraIntrinsics,
                    const std::string& topicTf, const std::string& topicTfStatic,
-                   double maxViewingDistance);
+                   std::vector<double> maxViewingDistances);
   ~RosbagDumperAitf();
 
 private:
