@@ -59,6 +59,8 @@ private:
   /* composition to the seerep_hdf5_ros interface */
   std::unique_ptr<seerep_hdf5_ros::Hdf5Ros> hdf5Ros;
 
+  std::shared_ptr<seerep_hdf5_core::Hdf5CoreGeneral> ioCoreGeneral;
+
   rosbag::Bag bag;
 };
 

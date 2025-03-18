@@ -52,7 +52,7 @@ public:
    * @param image Image message to dump.
    * @param uuid UUID of the corresponding camera info message.
    */
-  void dump(const sensor_msgs::Image& image, const std::string& uuid);
+  std::string dump(const sensor_msgs::Image& image, const std::string& uuid);
 
   /**
    * @brief Store a compressed image message to hdf5.
@@ -71,7 +71,7 @@ public:
    *
    * @param pcl Point cloud message to store.
    */
-  void dump(const sensor_msgs::PointCloud2& pcl);
+  std::string dump(const sensor_msgs::PointCloud2& pcl);
 
   /**
    * @brief Store a tf message to hdf5.

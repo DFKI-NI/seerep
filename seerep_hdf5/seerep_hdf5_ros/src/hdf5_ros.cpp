@@ -23,8 +23,9 @@ Hdf5Ros::~Hdf5Ros()
 
 void Hdf5Ros::dump(const sensor_msgs::Image& image, const std::string& uuid)
 {
-  const std::string path = "images/" + boost::lexical_cast<std::string>(
-                                           boost::uuids::random_generator()());
+  std::string uuid =
+      boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+  const std::string path = "images/" + uuid;
   HighFive::DataSpace dataspace =
       HighFive::DataSpace(image.height * image.step);
 
@@ -46,6 +47,8 @@ void Hdf5Ros::dump(const sensor_msgs::Image& image, const std::string& uuid)
     hdf5Core_->writeAttributeToHdf5<std::string>(
         group, "camera_intrinsics_uuid", uuid);
   }
+
+  return uuid;
 }
 
 void Hdf5Ros::dump(const sensor_msgs::CompressedImage& image)
@@ -134,11 +137,11 @@ void Hdf5Ros::dump(const std::string& groupPath, const std_msgs::Header& header)
                                                header.frame_id);
 }
 
-void Hdf5Ros::dump(const sensor_msgs::PointCloud2& pcl)
+std::string Hdf5Ros::dump(const sensor_msgs::PointCloud2& pcl)
 {
-  const std::string path =
-      "pointclouds/" +
+  std::string uuid =
       boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+  const std::string path = "pointclouds/" + uuid;
   HighFive::DataSpace dataspace = HighFive::DataSpace(pcl.data.size());
   HighFive::Group group = *hdf5Core_->getHdf5Group(path);
 
@@ -184,6 +187,8 @@ void Hdf5Ros::dump(const sensor_msgs::PointCloud2& pcl)
 
   hdf5Core_->getHdf5DataSet<uint8_t>(path + "/points", dataspace)
       ->write(std::move(pcl.data.data()));
+
+  return uuid;
 }
 
 void Hdf5Ros::dump(const tf2_msgs::TFMessage& tf2_msg, bool is_static)

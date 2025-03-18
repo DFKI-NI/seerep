@@ -14,6 +14,12 @@ RosbagDumperAitf::RosbagDumperAitf(
   hdf5Ros = std::make_unique<seerep_hdf5_ros::Hdf5Ros>(
       hdf5FilePath, projectFrameId, projectName);
 
+  std::shared_ptr<HighFive::File> hdf5File = std::make_shared<HighFive::File>(
+      hdf5FilePath, HighFive::File::OpenOrCreate);
+  auto writeMtx = std::make_shared<std::mutex>();
+  ioCoreGeneral =
+      std::make_shared<seerep_hdf5_core::Hdf5CoreGeneral>(hdf5File, writeMtx);
+
   bag.open(bagPath);
 
   iterateAndDumpTf(topicTf, topicTfStatic);
@@ -64,6 +70,7 @@ void RosbagDumperAitf::iterateAndDumpImages(
   for (const rosbag::MessageInstance& m :
        rosbag::View(bag, rosbag::TopicQuery(topicImage)))
   {
+    std::string msgUUID;
     sensor_msgs::Image::ConstPtr raw_msg;
     if (m.getDataType() == "sensor_msgs/CompressedImage")
     {
@@ -79,12 +86,21 @@ void RosbagDumperAitf::iterateAndDumpImages(
     }
     if (raw_msg != nullptr)
     {
-      hdf5Ros->dump(*raw_msg, cameraIntrinsicsUuid);
+      msgUUID = hdf5Ros->dump(*raw_msg, cameraIntrinsicsUuid);
     }
     else
     {
       ROS_ERROR_STREAM("nullptr while iterating images");
     }
+
+    // add label
+    std::vector<seerep_core_msgs::LabelCategory> labelCategories;
+    seerep_core_msgs::LabelCategory labelCategory;
+    labelCategory.category = "myLabelCategory";
+    labelCategory.labels.push_back("myLabel");
+
+    ioCoreGeneral->writeLabels(seerep_hdf5_core::Hdf5CoreImage::HDF5_GROUP_IMAGE,
+                               msgUUID, LabelCategory);
   }
 }
 
@@ -93,16 +109,19 @@ void RosbagDumperAitf::iterateAndDumpPc2(const std::string& topicPc2)
   for (const rosbag::MessageInstance& m :
        rosbag::View(bag, rosbag::TopicQuery(topicPc2)))
   {
+    std::string msgUUID;
     sensor_msgs::PointCloud2::ConstPtr msg =
         m.instantiate<sensor_msgs::PointCloud2>();
     if (msg != nullptr)
     {
-      hdf5Ros->dump(*msg);
+      msgUUID = hdf5Ros->dump(*msg);
     }
     else
     {
       ROS_ERROR_STREAM("nullptr while iterating images");
     }
+    // ioCoreGeneral->writeLabels(
+    //   seerep_hdf5_core::Hdf5CorePointcloud::HDF5_GROUP_POINTCLOUD, msgUUID, LabelCategory);
   }
 }
 
