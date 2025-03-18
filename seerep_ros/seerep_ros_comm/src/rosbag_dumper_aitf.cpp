@@ -100,7 +100,7 @@ void RosbagDumperAitf::iterateAndDumpImages(
     labelCategory.labels.push_back("myLabel");
 
     ioCoreGeneral->writeLabels(seerep_hdf5_core::Hdf5CoreImage::HDF5_GROUP_IMAGE,
-                               msgUUID, LabelCategory);
+                               msgUUID, labelCategories);
   }
 }
 

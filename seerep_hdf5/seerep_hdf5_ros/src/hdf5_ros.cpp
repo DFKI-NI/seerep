@@ -21,11 +21,12 @@ Hdf5Ros::~Hdf5Ros()
   file_->flush();
 }
 
-void Hdf5Ros::dump(const sensor_msgs::Image& image, const std::string& uuid)
+std::string Hdf5Ros::dump(const sensor_msgs::Image& image,
+                          const std::string& cameraUuid)
 {
-  std::string uuid =
+  std::string msgUuid =
       boost::lexical_cast<std::string>(boost::uuids::random_generator()());
-  const std::string path = "images/" + uuid;
+  const std::string path = "images/" + msgUuid;
   HighFive::DataSpace dataspace =
       HighFive::DataSpace(image.height * image.step);
 
@@ -42,13 +43,13 @@ void Hdf5Ros::dump(const sensor_msgs::Image& image, const std::string& uuid)
   hdf5Core_->getHdf5DataSet<uint8_t>(path + "/rawdata", dataspace)
       ->write(std::move(image.data.data()));
 
-  if (!uuid.empty())
+  if (!cameraUuid.empty())
   {
     hdf5Core_->writeAttributeToHdf5<std::string>(
-        group, "camera_intrinsics_uuid", uuid);
+        group, "camera_intrinsics_uuid", cameraUuid);
   }
 
-  return uuid;
+  return msgUuid;
 }
 
 void Hdf5Ros::dump(const sensor_msgs::CompressedImage& image)
