@@ -74,7 +74,7 @@ jobs:
       # check if files have changed
       - name: Get changed files
         id: changed-files-specific-docker-base
-        uses: tj-actions/changed-files@v42
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             docker/base/Dockerfile
@@ -95,7 +95,7 @@ jobs:
       -
         name: Build and push base image
         if: github.ref_type == 'tag' || steps.changed-files-specific-docker-base.outputs.any_changed == 'true'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: Dockerfile
           context: "{{defaultContext}}:docker/base"
@@ -168,7 +168,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       -
         name: Build and push server image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: docker/server/Dockerfile
           push: ${{ GitHub.event_name != 'pull_request'}}
