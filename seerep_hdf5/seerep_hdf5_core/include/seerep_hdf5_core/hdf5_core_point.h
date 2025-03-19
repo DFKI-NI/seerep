@@ -10,6 +10,7 @@
 
 // seerep_msgs
 #include <seerep_msgs/dataset_indexable.h>
+#include <seerep_msgs/timestamp_frame_mesh.h>
 
 // std
 #include <boost/geometry.hpp>
@@ -36,6 +37,14 @@ public:
   readDataset(const std::string& uuid);
 
   std::vector<std::string> getDatasetUuids();
+
+  /**
+   * @brief THIS IS CURRENTLY A NOOP
+   *
+   * @return nullopt
+   */
+  std::optional<seerep_core_msgs::TimestampFrameMesh>
+  getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry);
 
 public:
   inline static const std::string RAWDATA = "rawdata";

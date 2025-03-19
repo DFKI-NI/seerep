@@ -130,6 +130,54 @@ bool CoreTf::canTransform(const std::string& sourceFrame,
                                  ros::Time(timeSecs, timeNanos));
 }
 
+std::vector<CGPoint_3>
+CoreTf::transform(const std::string& sourceFrame,
+                  const std::string& targetFrame, const int64_t& timeSecs,
+                  const int64_t& timeNanos,
+                  const std::vector<std::reference_wrapper<CGPoint_3>>& points)
+{
+  if (sourceFrame == targetFrame)
+  {
+    return std::vector<CGPoint_3>{ points.begin(), points.end() };
+  }
+
+  std::vector<CGPoint_3> transformed_points;
+  if (this->canTransform(sourceFrame, targetFrame, timeSecs, timeNanos))
+  {
+    auto tf =
+        m_tfBuffer.lookupTransform(targetFrame, sourceFrame,
+                                   ros::Time(static_cast<uint32_t>(timeSecs),
+                                             static_cast<uint32_t>(timeNanos)));
+    auto rot = tf.transform.rotation;
+    auto trans = tf.transform.translation;
+    tf2::Quaternion q{ rot.x, rot.y, rot.z, rot.w };
+    tf2::Vector3 o{ trans.x, trans.y, trans.z };
+    tf2::Transform tf2_tf{ q, o };
+
+    for (auto&& p : points)
+    {
+      tf2::Vector3 vec{ p.get().x().exact().convert_to<double>(),
+                        p.get().y().exact().convert_to<double>(),
+                        p.get().z().exact().convert_to<double>() };
+
+      tf2::Vector3 vec_target = tf2_tf * vec;
+
+      CGPoint_3 p_target{ vec_target.getX(), vec_target.getY(),
+                          vec_target.getZ() };
+
+      transformed_points.push_back(p_target);
+    }
+  }
+  else
+  {
+    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::warning)
+        << "Could not find transform" << sourceFrame << " -> " << targetFrame
+        << " in tf buffer at time " << (timeSecs * 10 ^ 9) << timeNanos
+        << "ns.";
+  }
+  return transformed_points;
+}
+
 std::vector<std::string> CoreTf::getFrames()
 {
   BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::trace)

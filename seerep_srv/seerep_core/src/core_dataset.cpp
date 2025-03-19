@@ -208,10 +208,10 @@ CoreDataset::polygonToAABB(const seerep_core_msgs::Polygon2D& polygon)
   seerep_core_msgs::Point min, max;
 
   bg::set<0>(min, std::numeric_limits<float>::max());
-  bg::set<0>(max, std::numeric_limits<float>::min());
+  bg::set<0>(max, std::numeric_limits<float>::lowest());
 
   bg::set<1>(min, std::numeric_limits<float>::max());
-  bg::set<1>(max, std::numeric_limits<float>::min());
+  bg::set<1>(max, std::numeric_limits<float>::lowest());
 
   bg::set<2>(min, polygon.z);
   bg::set<2>(max, polygon.height + polygon.z);
@@ -255,8 +255,8 @@ CoreDataset::querySpatial(std::shared_ptr<DatatypeSpecifics> datatypeSpecifics,
 {
   if (query.polygon)
   {
-    return queryRtree(datatypeSpecifics->rt, query.polygon.value(),
-                      query.fullyEncapsulated);
+    return queryRtree(datatypeSpecifics->rt, *datatypeSpecifics->hdf5io,
+                      query.polygon.value(), query.fullyEncapsulated);
   }
   else
   {
@@ -272,6 +272,7 @@ CoreDataset::querySpatialSensorPos(
   if (query.polygonSensorPos)
   {
     return queryRtree(datatypeSpecifics->rtSensorPos,
+                      *datatypeSpecifics->hdf5io,
                       query.polygonSensorPos.value(), query.fullyEncapsulated);
   }
   else
@@ -280,10 +281,11 @@ CoreDataset::querySpatialSensorPos(
   }
 }
 
-std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
-CoreDataset::queryRtree(const seerep_core_msgs::rtree& rt,
-                        const seerep_core_msgs::Polygon2D& polygon,
-                        const bool queryFullyEncapsulated)
+std::optional<std::vector<seerep_core_msgs::AabbIdPair>> CoreDataset::queryRtree(
+    const seerep_core_msgs::rtree& rt,
+    seerep_hdf5_core::Hdf5CoreDatatypeInterface& coreDatatype,
+    const seerep_core_msgs::Polygon2D& polygon,
+    const bool queryFullyEncapsulated)
 {
   // generate rtree result container
   std::optional<std::vector<seerep_core_msgs::AabbIdPair>> rt_result =
@@ -306,6 +308,47 @@ CoreDataset::queryRtree(const seerep_core_msgs::rtree& rt,
     // provided in the query
     intersectionDegree(it->first, polygon, fullyEncapsulated,
                        partiallyEncapsulated);
+
+    // precise check
+    // This is only needed when fullyEncapsulated = false and
+    // partiallyEncapsulated = true as the aabb approximation through
+    // intersectionDegree is a upper bound for the real 3D object
+    // If fullyEncapsulated = true => the real object is inside the approx and thus
+    // inside the query
+    // If both are false using the approx for the real object
+    // the values must be false aswell
+    // True for partialEncapsulation and false for fullyEncapsulated must
+    // be verified, as this could be indeed false with the real object
+    if (partiallyEncapsulated == true && fullyEncapsulated == false)
+    {
+      auto ts_frame_points = coreDatatype.getPolygonConstraintMesh(it->second);
+      if (ts_frame_points.has_value())
+      {
+        CGSurfaceMesh& mesh = ts_frame_points->mesh;
+        std::vector<std::reference_wrapper<CGPoint_3>> ref_points;
+
+        for (auto& idx : mesh.vertices())
+        {
+          ref_points.push_back(mesh.point(idx));
+        }
+
+        // transform points from another coordinate system to the map frame of the project
+        auto points_vec =
+            m_tfOverview->transform(ts_frame_points->frame_id, m_frameId,
+                                    ts_frame_points->timestamp.seconds,
+                                    ts_frame_points->timestamp.nanos,
+                                    ref_points);
+
+        for (auto& idx : mesh.vertices())
+        {
+          mesh.point(idx) = points_vec[idx.idx()];
+        }
+
+        // check if these point are enclosed by the query polygon
+        checkPartialIntersectionWithZExtrudedPolygon(mesh, polygon,
+                                                     partiallyEncapsulated);
+      }
+    }
 
     // if there is no intersection between the result and the user's
     // request, remove it from the iterator
@@ -821,7 +864,8 @@ void CoreDataset::addLabels(
   datatypeSpecifics->datasetInstancesMap.emplace(msgUuid, instanceUuids);
 }
 
-bool CoreDataset::verifyPolygonIntegrity(CGAL::Polygon_2<Kernel>& polygon_cgal)
+bool CoreDataset::verifyPolygonIntegrity(
+    CGAL::Polygon_2<ExactKernel>& polygon_cgal)
 {
   if (!polygon_cgal.is_simple())
   {
@@ -845,44 +889,43 @@ bool CoreDataset::verifyPolygonIntegrity(CGAL::Polygon_2<Kernel>& polygon_cgal)
   return true;
 }
 
-CGAL::Polygon_2<Kernel>
+CGAL::Polygon_2<ExactKernel>
 CoreDataset::toCGALPolygon(const seerep_core_msgs::Polygon2D& polygon)
 {
-  CGAL::Polygon_2<Kernel> polygon_cgal;
+  CGAL::Polygon_2<ExactKernel> polygon_cgal;
   for (auto point : polygon.vertices)
   {
     polygon_cgal.push_back(
-        Kernel::Point_2(bg::get<0>(point), bg::get<1>(point)));
+        ExactKernel::Point_2(bg::get<0>(point), bg::get<1>(point)));
   }
-
   return polygon_cgal;
 }
 
-CGAL::Polygon_2<Kernel>
+CGAL::Polygon_2<ExactKernel>
 CoreDataset::toCGALPolygon(const seerep_core_msgs::AABB& aabb)
 {
   /* Check if the bounding box has no spatial extent -> Only add one point to the polygon */
   if (bg::get<bg::min_corner, 0>(aabb) == bg::get<bg::max_corner, 0>(aabb) &&
       bg::get<bg::min_corner, 1>(aabb) == bg::get<bg::max_corner, 1>(aabb))
   {
-    Kernel::Point_2 points_aabb[] = { Kernel::Point_2(
+    ExactKernel::Point_2 points_aabb[] = { ExactKernel::Point_2(
         bg::get<bg::min_corner, 0>(aabb), bg::get<bg::min_corner, 1>(aabb)) };
-    CGAL::Polygon_2<Kernel> aabb_cgal(points_aabb, points_aabb + 1);
+    CGAL::Polygon_2<ExactKernel> aabb_cgal(points_aabb, points_aabb + 1);
     return aabb_cgal;
   }
   else
   {
-    Kernel::Point_2 points_aabb[] = {
-      Kernel::Point_2(bg::get<bg::min_corner, 0>(aabb),
-                      bg::get<bg::min_corner, 1>(aabb)),
-      Kernel::Point_2(bg::get<bg::max_corner, 0>(aabb),
-                      bg::get<bg::min_corner, 1>(aabb)),
-      Kernel::Point_2(bg::get<bg::max_corner, 0>(aabb),
-                      bg::get<bg::max_corner, 1>(aabb)),
-      Kernel::Point_2(bg::get<bg::min_corner, 0>(aabb),
-                      bg::get<bg::max_corner, 1>(aabb)),
+    ExactKernel::Point_2 points_aabb[] = {
+      ExactKernel::Point_2(bg::get<bg::min_corner, 0>(aabb),
+                           bg::get<bg::min_corner, 1>(aabb)),
+      ExactKernel::Point_2(bg::get<bg::max_corner, 0>(aabb),
+                           bg::get<bg::min_corner, 1>(aabb)),
+      ExactKernel::Point_2(bg::get<bg::max_corner, 0>(aabb),
+                           bg::get<bg::max_corner, 1>(aabb)),
+      ExactKernel::Point_2(bg::get<bg::min_corner, 0>(aabb),
+                           bg::get<bg::max_corner, 1>(aabb)),
     };
-    CGAL::Polygon_2<Kernel> aabb_cgal(points_aabb, points_aabb + 4);
+    CGAL::Polygon_2<ExactKernel> aabb_cgal(points_aabb, points_aabb + 4);
 
     return aabb_cgal;
   }
@@ -894,10 +937,10 @@ void CoreDataset::intersectionDegree(const seerep_core_msgs::AABB& aabb,
                                      bool& partialEncapsulation)
 {
   // convert seerep core aabb to cgal polygon
-  CGAL::Polygon_2<Kernel> aabb_cgal = toCGALPolygon(aabb);
+  CGAL::Polygon_2<ExactKernel> aabb_cgal = toCGALPolygon(aabb);
 
   // convert seerep core polygon to cgal polygon
-  CGAL::Polygon_2<Kernel> polygon_cgal = toCGALPolygon(polygon);
+  CGAL::Polygon_2<ExactKernel> polygon_cgal = toCGALPolygon(polygon);
 
   // a cgal polyon needs to be simple, convex and the points should be added
   // in a counter clockwise order
@@ -911,14 +954,12 @@ void CoreDataset::intersectionDegree(const seerep_core_msgs::AABB& aabb,
                                   fullEncapsulation, partialEncapsulation);
 }
 
-void CoreDataset::intersectionDegreeCgalPolygons(CGAL::Polygon_2<Kernel> cgal1,
-                                                 CGAL::Polygon_2<Kernel> cgal2,
-                                                 bool z_partially,
-                                                 bool checkIfFullyEncapsulated,
-                                                 bool& fullEncapsulation,
-                                                 bool& partialEncapsulation)
+void CoreDataset::intersectionDegreeCgalPolygons(
+    CGAL::Polygon_2<ExactKernel> cgal1, CGAL::Polygon_2<ExactKernel> cgal2,
+    bool z_partially, bool checkIfFullyEncapsulated, bool& fullEncapsulation,
+    bool& partialEncapsulation)
 {
-  for (CGAL::Polygon_2<Kernel>::Vertex_iterator vi = cgal1.vertices_begin();
+  for (CGAL::Polygon_2<ExactKernel>::Vertex_iterator vi = cgal1.vertices_begin();
        vi != cgal1.vertices_end(); ++vi)
   {
     // is the vertex of the aabb inside or on the boundary (not outside) the
@@ -940,8 +981,9 @@ void CoreDataset::intersectionDegreeCgalPolygons(CGAL::Polygon_2<Kernel> cgal1,
 void CoreDataset::intersectionDegreeAABBinPolygon(
     const seerep_core_msgs::AABB& aabb,
     const seerep_core_msgs::Polygon2D& polygon,
-    CGAL::Polygon_2<Kernel> aabb_cgal, CGAL::Polygon_2<Kernel> polygon_cgal,
-    bool& fullEncapsulation, bool& partialEncapsulation)
+    CGAL::Polygon_2<ExactKernel> aabb_cgal,
+    CGAL::Polygon_2<ExactKernel> polygon_cgal, bool& fullEncapsulation,
+    bool& partialEncapsulation)
 {
   fullEncapsulation = true;
   partialEncapsulation = false;
@@ -995,6 +1037,132 @@ void CoreDataset::intersectionDegreeAABBinPolygon(
                                  fullEncapsulation, partialEncapsulation);
 }
 
+CGSurfaceMesh
+CoreDataset::toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon)
+{
+  using CGVertexIndex = CGSurfaceMesh::Vertex_index;
+
+  if (seerep_polygon.vertices.size() <= 2)
+  {
+    throw std::invalid_argument(
+        "seerep_core_msgs::Polygon2D has not enough vertices to be expanded"
+        " to a full 3D SurfaceMesh");
+  }
+
+  CGSurfaceMesh surface_mesh;
+
+  std::vector<CGVertexIndex> lower_surface, upper_surface;
+  CGVertexIndex topInitial, bottomInitial;
+  CGVertexIndex topFirst, bottomFirst, topSecond, bottomSecond;
+
+  CGFaceIdx face_desc;
+
+  auto z_top = seerep_polygon.z + seerep_polygon.height;
+  auto& z_bottom = seerep_polygon.z;
+  auto& verts = seerep_polygon.vertices;
+
+  auto x = verts[0].get<0>();
+  auto y = verts[0].get<1>();
+  topInitial = topFirst = surface_mesh.add_vertex(CGPoint_3{ x, y, z_top });
+  bottomInitial = bottomFirst =
+      surface_mesh.add_vertex(CGPoint_3{ x, y, z_bottom });
+
+  // the vertices are connected in order; The assumption is that the last point
+  // of the polygon connects to the first
+  for (size_t j = 1; j < verts.size(); ++j)
+  {
+    x = verts[j].get<0>();
+    y = verts[j].get<1>();
+    topSecond = surface_mesh.add_vertex(CGPoint_3{ x, y, z_top });
+    bottomSecond = surface_mesh.add_vertex(CGPoint_3{ x, y, z_bottom });
+
+    upper_surface.push_back(topFirst);
+    lower_surface.push_back(bottomFirst);
+    face_desc =
+        surface_mesh.add_face(topFirst, topSecond, bottomSecond, bottomFirst);
+
+    if (face_desc == CGSurfaceMesh::null_face())
+    {
+      throw std::invalid_argument(
+          "Could not add side face from Polygon2d to SurfaceMesh correctly!");
+    }
+
+    topFirst = topSecond;
+    bottomFirst = bottomSecond;
+  }
+  upper_surface.push_back(topFirst);
+  lower_surface.push_back(bottomFirst);
+
+  std::vector<CGSurfaceMesh::Face_index> descriptors;
+
+  descriptors.push_back(
+      surface_mesh.add_face(topFirst, topInitial, bottomInitial, bottomFirst));
+  descriptors.push_back(surface_mesh.add_face(lower_surface));
+
+  // for whatever reason the vertices need to be reversed for the latest face to
+  // construct the mesh correctly.
+  // If the construction of the latest face does not work ALWAYS try
+  // reversing the vertex order
+  std::reverse(upper_surface.begin(), upper_surface.end());
+  descriptors.push_back(surface_mesh.add_face(upper_surface));
+
+  // check if any of the faces was not constructed properly
+  if (std::find_if(descriptors.begin(), descriptors.end(), [](auto elem) {
+        return elem == CGSurfaceMesh::null_face();
+      }) != descriptors.end())
+  {
+    throw std::invalid_argument("Could not upper/lower or latest side face from"
+                                " Polygon2d to SurfaceMesh correctly!");
+  }
+
+  return surface_mesh;
+}
+
+void CoreDataset::checkPartialIntersectionWithZExtrudedPolygon(
+    CGSurfaceMesh enclosedMesh,
+    const seerep_core_msgs::Polygon2D& enclosingPolygon,
+    bool& partialEncapsulation)
+{
+  using CGAL::Polygon_mesh_processing::triangulate_faces;
+
+  if (!enclosedMesh.is_valid() || enclosedMesh.is_empty())
+  {
+    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
+        << "enclosedMesh passed to checkIntersectionWithZExtrudedPolygon "
+           "is either not valid or empty. Skipping precise check...";
+    return;
+  }
+
+  auto enclosingMesh = toSurfaceMesh(enclosingPolygon);
+
+  if (!enclosingMesh.is_valid() || enclosingMesh.is_empty())
+  {
+    BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::debug)
+        << "enclosingMesh derived from enclosingPolygon"
+           "passed to checkIntersectionWithZExtrudedPolygon "
+           "is either not valid or empty. Skipping precise check...";
+    return;
+  }
+
+  triangulate_faces(enclosedMesh);
+  triangulate_faces(enclosingMesh);
+
+  partialEncapsulation =
+      CGAL::Polygon_mesh_processing::do_intersect(enclosedMesh, enclosingMesh);
+}
+
+CGPolygon_2 CoreDataset::reduceZDimension(const CGSurfaceMesh& mesh)
+{
+  CGPolygon_2 poly2;
+
+  for (CGSurfaceMesh::Vertex_index idx : mesh.vertices())
+  {
+    CGPoint_2 p{ mesh.point(idx).x(), mesh.point(idx).y() };
+    poly2.push_back(p);
+  }
+  return poly2;
+}
+
 seerep_core_msgs::AabbTime
 CoreDataset::getTimeBounds(std::vector<seerep_core_msgs::Datatype> datatypes)
 {
@@ -1030,9 +1198,9 @@ CoreDataset::getSpatialBounds(std::vector<seerep_core_msgs::Datatype> datatypes)
   seerep_core_msgs::AABB overallbb;
 
   // set the minimum to minimum possible for the datatype
-  overallbb.max_corner().set<0>(std::numeric_limits<float>::min());
-  overallbb.max_corner().set<1>(std::numeric_limits<float>::min());
-  overallbb.max_corner().set<2>(std::numeric_limits<float>::min());
+  overallbb.max_corner().set<0>(std::numeric_limits<float>::lowest());
+  overallbb.max_corner().set<1>(std::numeric_limits<float>::lowest());
+  overallbb.max_corner().set<2>(std::numeric_limits<float>::lowest());
 
   // set the maximum for the maximum possible for the datatype
   overallbb.min_corner().set<0>(std::numeric_limits<float>::max());
