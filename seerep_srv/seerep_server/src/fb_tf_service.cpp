@@ -201,8 +201,9 @@ grpc::Status FbTfService::GetFrames(
       framesOffset.push_back(builder.CreateString(framename));
     }
 
+    auto stringVectorOffset = builder.CreateVector(framesOffset);
     seerep::fb::StringVectorBuilder frameinfosbuilder(builder);
-    frameinfosbuilder.add_stringVector(builder.CreateVector(framesOffset));
+    frameinfosbuilder.add_stringVector(stringVectorOffset);
     auto frameinfosOffset = frameinfosbuilder.Finish();
     builder.Finish(frameinfosOffset);
     *response = builder.ReleaseMessage<seerep::fb::StringVector>();
