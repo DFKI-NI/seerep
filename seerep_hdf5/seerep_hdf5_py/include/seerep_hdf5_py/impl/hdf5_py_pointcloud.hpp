@@ -80,6 +80,7 @@ void Hdf5PyPointCloud::getMinMax(
 {
   for (std::size_t i = 0; i < Nfields; i++)
   {
+    // TODO check if min needs to be replaced by lowest for, due to floating point types
     min[i] = std::numeric_limits<T>::max();
     max[i] = std::numeric_limits<T>::min();
 

@@ -19,13 +19,16 @@ dependencies = [
 ]
 dynamic = ["version"]
 
-[tool.setuptools_scm]
-version_scheme = "no-guess-dev"
-local_scheme = "no-local-version"
-
 [project.urls]
 Repository = "https://github.com/DFKI-NI/seerep"
 Documentation = "https://dfki-ni.github.io/seerep/mkdocs/home/index.html"
+
+[tool.basedpyright]
+typeCheckingMode="standard"
+
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

@@ -3,10 +3,10 @@
 
 #include <CGAL/Boolean_set_operations_2.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Polygon_mesh_processing/intersection.h>
+#include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
+#include <CGAL/Surface_mesh.h>
 
-#include <algorithm>
-#include <cstdint>
-#include <functional>
 #include <optional>
 #include <unordered_set>
 
@@ -29,7 +29,12 @@
 #include <boost/uuid/uuid_generators.hpp>  // generators
 #include <boost/uuid/uuid_io.hpp>          // streaming operators etc.
 
-typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
+typedef CGAL::Exact_predicates_exact_constructions_kernel ExactKernel;
+typedef CGAL::Point_3<ExactKernel> CGPoint_3;
+typedef CGAL::Surface_mesh<CGPoint_3> CGSurfaceMesh;
+typedef CGAL::Polygon_2<ExactKernel> CGPolygon_2;
+typedef CGAL::Point_2<ExactKernel> CGPoint_2;
+typedef CGSurfaceMesh::Face_index CGFaceIdx;
 
 namespace seerep_core
 {
@@ -250,7 +255,7 @@ private:
    * @return true The polygon abides by CGAL requirements
    * @return false The polygon does not abide by CGAL requirements
    */
-  bool verifyPolygonIntegrity(CGAL::Polygon_2<Kernel>& polygon_cgal);
+  bool verifyPolygonIntegrity(CGAL::Polygon_2<ExactKernel>& polygon_cgal);
 
   /**
    * @brief transforms the bounding box to the datasets frameId (mostly the map
@@ -268,7 +273,7 @@ private:
    * @param polygon core msg polygon
    * @return CGAL::Polygon_2<Kernel> cgal polygon
    */
-  CGAL::Polygon_2<Kernel>
+  CGAL::Polygon_2<ExactKernel>
   toCGALPolygon(const seerep_core_msgs::Polygon2D& polygon);
 
   /**
@@ -277,7 +282,7 @@ private:
    * @param polygon core msg aabb
    * @return CGAL::Polygon_2<Kernel> cgal aabb
    */
-  CGAL::Polygon_2<Kernel> toCGALPolygon(const seerep_core_msgs::AABB& aabb);
+  CGAL::Polygon_2<ExactKernel> toCGALPolygon(const seerep_core_msgs::AABB& aabb);
 
   /**
    * @brief determine if the axis aligned bounding box is fully or paritally
@@ -294,18 +299,77 @@ private:
                           const seerep_core_msgs::Polygon2D& polygon,
                           bool& fullEncapsulation, bool& partialEncapsulation);
 
-  void intersectionDegreeCgalPolygons(CGAL::Polygon_2<Kernel> cgal1,
-                                      CGAL::Polygon_2<Kernel> cgal2,
+  /**
+   * @brief check whether cgal1 is encapsulated by cgal2
+   *
+   * @param cgal1 the (possibly) encapsulated polygon
+   * @param cgal2 the (possibly) encapsulating polygon
+   * @param z_partially a flag to indicate partial height encapsulation by cgal2
+   * @param checkIfFullyEncapsulated whether to check fully encapsulation
+   * @param fullEncapsulation is set to false when fullEncapsulation is not
+   * valid. This flag is only set, when checkIfFullyEncapsulated is true
+   * @param partialEncapsulation is set to true, when cgal1 is partially
+   * encapsulated by cgal2
+   */
+  void intersectionDegreeCgalPolygons(CGAL::Polygon_2<ExactKernel> cgal1,
+                                      CGAL::Polygon_2<ExactKernel> cgal2,
                                       bool z_partially,
                                       bool checkIfFullyEncapsulated,
                                       bool& fullEncapsulation,
                                       bool& partialEncapsulation);
 
-  void intersectionDegreeAABBinPolygon(
-      const seerep_core_msgs::AABB& aabb,
-      const seerep_core_msgs::Polygon2D& polygon,
-      CGAL::Polygon_2<Kernel> aabb_cgal, CGAL::Polygon_2<Kernel> polygon_cgal,
-      bool& fullEncapsulation, bool& partialEncapsulation);
+  /**
+   * @brief check if and to what degree AABB is encapsulated by polygon
+   *
+   * @param aabb the aabb to perform the check on
+   * @param polygon the query polygon
+   * @param aabb_cgal the core msgs aabb converted to a CGAL polygon
+   * @param polygon_cgal the core msgs polygon converted to a CGAL polygon
+   * @param fullEncapsulation whether aabb is fully encapsulated by the polygon
+   * @param partialEncapsulation whether the aabb and polygon intersect on a
+   *    subset of them in some way
+   */
+  void
+  intersectionDegreeAABBinPolygon(const seerep_core_msgs::AABB& aabb,
+                                  const seerep_core_msgs::Polygon2D& polygon,
+                                  CGAL::Polygon_2<ExactKernel> aabb_cgal,
+                                  CGAL::Polygon_2<ExactKernel> polygon_cgal,
+                                  bool& fullEncapsulation,
+                                  bool& partialEncapsulation);
+
+  /**
+   * @brief checks whether the enclosedMesh is really partially enclosed by the
+   * enclosingPolygon
+   *
+   * Both the enclosedMesh and enclosingPolygon have to be convex objects
+   *
+   * @param enclosedMesh mesh to check whether it is enclosed by the polygon
+   * @param enclosingPolygon polygon which is enclosing object
+   * @param partialEncapsulation flag which is set when enclosedMesh is
+   *   partially encapsulated by the enclosingPolygon
+   */
+  void checkPartialIntersectionWithZExtrudedPolygon(
+      CGSurfaceMesh enclosedMesh,
+      const seerep_core_msgs::Polygon2D& enclosingPolygon,
+      bool& partialEncapsulation);
+
+  /**
+   * @brief Creates a 2DPolygon by removing the 3rd dimension from the points of the Mesh
+   *
+   * @param mesh the input mesh
+   *
+   * @return the reduced mesh as a CGAL 2D polygon
+   */
+  CGPolygon_2 reduceZDimension(const CGSurfaceMesh& mesh);
+
+  /**
+   * @brief creates a SurfaceMesh from a seerep polygon 2D
+   *
+   * @param seerep_polygon the polygon to create the mesh from
+   *
+   * @return the resulting SurfaceMesh
+   */
+  CGSurfaceMesh toSurfaceMesh(const seerep_core_msgs::Polygon2D& seerep_polygon);
 
   void getUuidsFromMap(
       std::unordered_map<boost::uuids::uuid, std::vector<boost::uuids::uuid>,
@@ -345,15 +409,17 @@ private:
                         const seerep_core_msgs::Query& query);
 
   /**
-   * @brief queries the
+   * @brief queries the rtree
    *
    * @param rt
    * @param polygon
+   * @param coreDatatype
    * @param queryFullyEncapsulated
    * @return std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
    */
   std::optional<std::vector<seerep_core_msgs::AabbIdPair>>
   queryRtree(const seerep_core_msgs::rtree& rt,
+             seerep_hdf5_core::Hdf5CoreDatatypeInterface& coreDatatype,
              const seerep_core_msgs::Polygon2D& polygon,
              const bool queryFullyEncapsulated);
 
