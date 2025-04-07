@@ -9,10 +9,11 @@ RosbagDumperAitf::RosbagDumperAitf(
     const std::vector<std::string>& topicsPc2,
     const std::vector<std::string>& topicsCameraIntrinsics,
     const std::string& topicTf, const std::string& topicTfStatic,
+    const std::string& topicLabelGeneral,
     std::vector<double> maxViewingDistances)
 {
   hdf5Ros = std::make_unique<seerep_hdf5_ros::Hdf5Ros>(
-      hdf5FilePath, projectFrameId, projectName);
+      hdf5FilePath, projectName, projectFrameId);
 
   std::shared_ptr<HighFive::File> hdf5File = std::make_shared<HighFive::File>(
       hdf5FilePath, HighFive::File::OpenOrCreate);
@@ -27,6 +28,7 @@ RosbagDumperAitf::RosbagDumperAitf(
   // Iterate over images and camera info topics
 
   size_t index = 0;
+  setLabelGeneral(topicLabelGeneral);
   for (const auto& topicImage : topicsImage)
   {
     std::string cameraIntrinsicsUuid = getCameraIntrinsic(
@@ -64,6 +66,34 @@ RosbagDumperAitf::getCameraIntrinsic(const std::string& topicCameraIntrinsics,
   return "";
 }
 
+void RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
+{
+  ROS_INFO_STREAM("Set Time Label Map: ");
+  for (const rosbag::MessageInstance& m :
+       rosbag::View(bag, rosbag::TopicQuery(topicLabelGeneral)))
+  {
+    std_msgs::String::ConstPtr msg = m.instantiate<std_msgs::String>();
+    if (msg != nullptr)
+    {
+      ros::Time timestamp = m.getTime();
+      uint64_t time = (uint64_t)timestamp.sec << 32 | timestamp.nsec;
+      std::string labelGenerals = msg->data;
+      // Function to split a string by a delimiter
+      std::vector<std::string> result;
+      std::stringstream ss(msg->data);
+      std::string token;
+
+      while (std::getline(ss, token, ','))
+      {
+        result.push_back(token);
+        ROS_DEBUG_STREAM("Time Int: " << time << "Label String: " << token);
+      }
+
+      timeLabelMap.insert({ time, result });
+    }
+  }
+}
+
 void RosbagDumperAitf::iterateAndDumpImages(
     const std::string& topicImage, const std::string& cameraIntrinsicsUuid)
 {
@@ -94,11 +124,11 @@ void RosbagDumperAitf::iterateAndDumpImages(
     }
 
     // add label
-    std::vector<seerep_core_msgs::LabelCategory> labelCategories;
-    seerep_core_msgs::LabelCategory labelCategory;
-    labelCategory.category = "myLabelCategory";
-    labelCategory.labels.push_back("myLabel");
+    uint64_t time =
+        (uint64_t)raw_msg->header.stamp.sec << 32 | raw_msg->header.stamp.nsec;
 
+    std::vector<seerep_core_msgs::LabelCategory> labelCategories =
+        getCorrespondingLabelCategory(time);
     ioCoreGeneral->writeLabels(seerep_hdf5_core::Hdf5CoreImage::HDF5_GROUP_IMAGE,
                                msgUUID, labelCategories);
   }
@@ -120,8 +150,15 @@ void RosbagDumperAitf::iterateAndDumpPc2(const std::string& topicPc2)
     {
       ROS_ERROR_STREAM("nullptr while iterating images");
     }
-    // ioCoreGeneral->writeLabels(
-    //   seerep_hdf5_core::Hdf5CorePointcloud::HDF5_GROUP_POINTCLOUD, msgUUID, LabelCategory);
+    // add label
+    uint64_t time =
+        (uint64_t)msg->header.stamp.sec << 32 | msg->header.stamp.nsec;
+
+    std::vector<seerep_core_msgs::LabelCategory> labelCategories =
+        getCorrespondingLabelCategory(time);
+    ioCoreGeneral->writeLabels(
+        seerep_hdf5_core::Hdf5CorePointCloud::HDF5_GROUP_POINTCLOUD, msgUUID,
+        labelCategories);
   }
 }
 
@@ -165,6 +202,44 @@ sensor_msgs::Image::ConstPtr RosbagDumperAitf::convertCompressedImageToImage(
       cv_bridge::CvImage(header, "bgr8", image).toImageMsg();
 
   return img_msg;
+}
+
+std::vector<seerep_core_msgs::LabelCategory>
+RosbagDumperAitf::getCorrespondingLabelCategory(const uint64_t time)
+{
+  std::vector<seerep_core_msgs::LabelCategory> labelCategories;
+  seerep_core_msgs::LabelCategory labelCategory;
+
+  // get corresponding label
+  auto lowerBoundIt = timeLabelMap.lower_bound(time);
+
+  // Initialize variables to keep track of the nearest timestamp
+  auto nearestIt = lowerBoundIt;
+
+  // Check if we're at the end of the map or if we need to go back one item
+  if (nearestIt != timeLabelMap.end() && (nearestIt->first != time))
+  {
+    if (nearestIt != timeLabelMap.begin())
+    {
+      auto prevIt = std::prev(nearestIt);
+      // Compare distances to determine which is closer
+      if ((time - prevIt->first) <= (nearestIt->first - time))
+      {
+        nearestIt = prevIt;
+      }
+    }
+  }
+
+  // Print the result
+  if (nearestIt != timeLabelMap.end()) {}
+  labelCategory.category = "labelGeneral";
+  for (auto const& labelCategoryItem : nearestIt->second)
+  {
+    labelCategory.labels.push_back(labelCategoryItem);
+  }
+
+  labelCategories.push_back(labelCategory);
+  return labelCategories;
 }
 
 }  // namespace seerep_ros_comm
@@ -215,7 +290,8 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "seerep_ros_communication_rosbagDumperAitf");
   ros::NodeHandle privateNh("~");
 
-  std::string bagPath, projectFrameId, projectName, topicTf, topicTfStatic;
+  std::string bagPath, projectFrameId, projectName, topicTf, topicTfStatic,
+      topicLabel;
   std::vector<std::string> topicsImage, topicsPc2, topicsCameraIntrinsics;
   std::vector<double> maxViewingDistances;
 
@@ -230,6 +306,7 @@ int main(int argc, char** argv)
       privateNh.getParam("topicCameraIntrinsics", topicsCameraIntrinsics) &&
       privateNh.getParam("topicTf", topicTf) &&
       privateNh.getParam("topicTfStatic", topicTfStatic) &&
+      privateNh.getParam("topicLabel", topicLabel) &&
       privateNh.getParam("maxViewingDistance", maxViewingDistances))
   {
     ROS_INFO_STREAM("hdf5FilePath: " << hdf5FilePath);
@@ -250,6 +327,7 @@ int main(int argc, char** argv)
     }
     ROS_INFO_STREAM("topicTf: " << topicTf);
     ROS_INFO_STREAM("topicTfStatic: " << topicTfStatic);
+    ROS_INFO_STREAM("topicLabel: " << topicLabel);
     for (double maxViewingDistance : maxViewingDistances)
     {
       ROS_INFO_STREAM("maxViewingDistance: " << maxViewingDistance);
@@ -259,7 +337,7 @@ int main(int argc, char** argv)
     {
       seerep_ros_comm::RosbagDumperAitf rosbagDumperAitf(
           bagPath, hdf5FilePath, projectFrameId, projectName, topicsImage,
-          topicsPc2, topicsCameraIntrinsics, topicTf, topicTfStatic,
+          topicsPc2, topicsCameraIntrinsics, topicTf, topicTfStatic, topicLabel,
           maxViewingDistances);
     }
     else

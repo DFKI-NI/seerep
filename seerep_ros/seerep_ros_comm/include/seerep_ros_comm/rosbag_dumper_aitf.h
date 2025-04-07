@@ -4,6 +4,7 @@
 #include <seerep_hdf5_core/hdf5_core_cameraintrinsics.h>
 #include <seerep_hdf5_core/hdf5_core_general.h>
 #include <seerep_hdf5_core/hdf5_core_image.h>
+#include <seerep_hdf5_core/hdf5_core_point_cloud.h>
 #include <seerep_hdf5_ros/hdf5_ros.h>
 
 #include <filesystem>
@@ -15,6 +16,7 @@
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include <std_msgs/String.h>
 
 // open cv
 #include <cv_bridge/cv_bridge.h>
@@ -40,18 +42,22 @@ public:
                    const std::vector<std::string>& topicsPc2,
                    const std::vector<std::string>& topicsCameraIntrinsics,
                    const std::string& topicTf, const std::string& topicTfStatic,
+                   const std::string& topicLabelGeneral,
                    std::vector<double> maxViewingDistances);
   ~RosbagDumperAitf();
 
 private:
   std::string getCameraIntrinsic(const std::string& topicCameraIntrinsics,
                                  double maxViewingDistance);
+  void setLabelGeneral(const std::string& topicLabelGeneral);
   void iterateAndDumpImages(const std::string& topicImage,
                             const std::string& cameraIntrinsicsUuid);
   void iterateAndDumpPc2(const std::string& topicPc2);
   void iterateAndDumpTf(const std::string& topicTf,
                         const std::string& topicTfStatic);
   void iterateAndDumpTf(const std::string& topicTf, const bool isStatic);
+  std::vector<seerep_core_msgs::LabelCategory>
+  getCorrespondingLabelCategory(const uint64_t time);
 
   sensor_msgs::Image::ConstPtr convertCompressedImageToImage(
       const sensor_msgs::CompressedImage::ConstPtr& msg);
@@ -62,6 +68,10 @@ private:
   std::shared_ptr<seerep_hdf5_core::Hdf5CoreGeneral> ioCoreGeneral;
 
   rosbag::Bag bag;
+
+  // map from pair of seconds/nanoseconds of the header to the uuid
+  std::map<uint64_t, std::string> timeUuidMap;
+  std::map<uint64_t, std::vector<std::string>> timeLabelMap;
 };
 
 }  // namespace seerep_ros_comm
