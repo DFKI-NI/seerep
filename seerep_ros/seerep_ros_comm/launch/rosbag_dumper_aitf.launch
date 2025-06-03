@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <launch>
-    <arg name="bagPath" default="/seerep/seerep-data/test.bag"/>
+    <arg name="bagPath" default="/seerep/seerep-data/31702f8f-8daa-41e3-8e9a-e11dd1ef2622_processed.bag"/>
     <arg name="hdf5FolderPath" default="/seerep/seerep-data/"/>
     <arg name="projectFrameId" default="map"/>
     <arg name="projectName" default="TestDump"/>

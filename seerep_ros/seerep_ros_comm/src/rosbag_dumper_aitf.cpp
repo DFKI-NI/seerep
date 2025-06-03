@@ -28,7 +28,10 @@ RosbagDumperAitf::RosbagDumperAitf(
   // Iterate over images and camera info topics
 
   size_t index = 0;
-  setLabelGeneral(topicLabelGeneral);
+  if (!setLabelGeneral(topicLabelGeneral))
+  {
+    throw std::runtime_error("Unable to parse label general struct");
+  }
   for (const auto& topicImage : topicsImage)
   {
     std::string cameraIntrinsicsUuid = getCameraIntrinsic(
@@ -66,7 +69,7 @@ RosbagDumperAitf::getCameraIntrinsic(const std::string& topicCameraIntrinsics,
   return "";
 }
 
-void RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
+int RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
 {
   ROS_INFO_STREAM("Set Time Label Map: ");
   for (const rosbag::MessageInstance& m :
@@ -77,7 +80,26 @@ void RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
     {
       ros::Time timestamp = m.getTime();
       uint64_t time = (uint64_t)timestamp.sec << 32 | timestamp.nsec;
-      std::string labelGenerals = msg->data;
+      std::string labelStringStruct = msg->data;
+
+      Json::CharReaderBuilder builder;
+      Json::Value labelJSONStruct;
+      std::string errs;
+
+      std::istringstream iss(labelStringStruct);
+      if (!Json::parseFromStream(builder, iss, &labelJSONStruct, &errs))
+      {
+        std::cerr << "Failed to parse JSON: " << errs << std::endl;
+        return -1;
+      }
+
+      std::vector<std::string> labelString =
+          labelJSON_to_string(labelJSONStruct, "_");
+      for (const auto& s : labelString)
+      {
+        std::cout << s << std::endl;
+      }
+
       // Function to split a string by a delimiter
       std::vector<std::string> result;
       std::stringstream ss(msg->data);
@@ -92,6 +114,7 @@ void RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
       timeLabelMap.insert({ time, result });
     }
   }
+  return 0;
 }
 
 void RosbagDumperAitf::iterateAndDumpImages(
@@ -236,10 +259,51 @@ RosbagDumperAitf::getCorrespondingLabelCategory(const uint64_t time)
   for (auto const& labelCategoryItem : nearestIt->second)
   {
     labelCategory.labels.push_back(labelCategoryItem);
+    labelCategory.labelsIdDatumaro.push_back(1);
   }
 
   labelCategories.push_back(labelCategory);
   return labelCategories;
+}
+
+void RosbagDumperAitf::concat_json_labels(const Json::Value& labelStruct,
+                                          const std::string& prefix,
+                                          std::vector<std::string>& out,
+                                          const std::string& delimiter = "_")
+{
+  if (labelStruct.isObject())
+  {
+    for (const auto& key : labelStruct.getMemberNames())
+    {
+      std::string new_prefix = prefix.empty() ? key : prefix + delimiter + key;
+      concat_json_labels(labelStruct[key], new_prefix, out, delimiter);
+    }
+  }
+  else if (labelStruct.isArray())
+  {
+    for (Json::ArrayIndex i = 0; i < labelStruct.size(); ++i)
+    {
+      std::string idx = std::to_string(i);
+      std::string new_prefix = prefix.empty() ? idx : prefix + delimiter + idx;
+      concat_json_labels(labelStruct[i], new_prefix, out, delimiter);
+    }
+  }
+  else
+  {
+    // Key_value as requested
+    std::ostringstream oss;
+    oss << prefix << delimiter << labelStruct.asString();
+    out.push_back(oss.str());
+  }
+}
+
+std::vector<std::string>
+RosbagDumperAitf::labelJSON_to_string(const Json::Value& labelStruct,
+                                      const std::string& delimiter = "_")
+{
+  std::vector<std::string> labelStrings;
+  concat_json_labels(labelStruct, "", labelStrings, delimiter);
+  return labelStrings;
 }
 
 }  // namespace seerep_ros_comm

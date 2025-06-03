@@ -23,6 +23,11 @@
 
 #include <opencv2/opencv.hpp>
 
+// json
+#include <jsoncpp/json/json.h>
+
+#include <sstream>
+
 // uuid
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
@@ -49,7 +54,7 @@ public:
 private:
   std::string getCameraIntrinsic(const std::string& topicCameraIntrinsics,
                                  double maxViewingDistance);
-  void setLabelGeneral(const std::string& topicLabelGeneral);
+  int setLabelGeneral(const std::string& topicLabelGeneral);
   void iterateAndDumpImages(const std::string& topicImage,
                             const std::string& cameraIntrinsicsUuid);
   void iterateAndDumpPc2(const std::string& topicPc2);
@@ -58,6 +63,13 @@ private:
   void iterateAndDumpTf(const std::string& topicTf, const bool isStatic);
   std::vector<seerep_core_msgs::LabelCategory>
   getCorrespondingLabelCategory(const uint64_t time);
+
+  void concat_json_labels(const Json::Value& node, const std::string& prefix,
+                          std::vector<std::string>& results,
+                          const std::string& delimiter);
+
+  std::vector<std::string> labelJSON_to_string(const Json::Value& root,
+                                               const std::string& delimiter);
 
   sensor_msgs::Image::ConstPtr convertCompressedImageToImage(
       const sensor_msgs::CompressedImage::ConstPtr& msg);

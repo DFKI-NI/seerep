@@ -133,6 +133,7 @@ target_link_libraries(
   ${Boost_LOG_LIBRARY}
   ${Boost_LOG_SETUP_LIBRARY}
   ${OpenCV_LIBRARIES}
+  jsoncpp
 )
 
 target_link_libraries(
