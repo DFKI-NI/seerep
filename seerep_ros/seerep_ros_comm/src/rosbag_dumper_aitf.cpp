@@ -69,7 +69,7 @@ RosbagDumperAitf::getCameraIntrinsic(const std::string& topicCameraIntrinsics,
   return "";
 }
 
-int RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
+bool RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
 {
   ROS_INFO_STREAM("Set Time Label Map: ");
   for (const rosbag::MessageInstance& m :
@@ -86,35 +86,20 @@ int RosbagDumperAitf::setLabelGeneral(const std::string& topicLabelGeneral)
       Json::Value labelJSONStruct;
       std::string errs;
 
-      std::istringstream iss(labelStringStruct);
-      if (!Json::parseFromStream(builder, iss, &labelJSONStruct, &errs))
+      std::istringstream labeliss(labelStringStruct);
+      if (!Json::parseFromStream(builder, labeliss, &labelJSONStruct, &errs))
       {
         std::cerr << "Failed to parse JSON: " << errs << std::endl;
-        return -1;
+        return false;
       }
 
       std::vector<std::string> labelString =
           labelJSON_to_string(labelJSONStruct, "_");
-      for (const auto& s : labelString)
-      {
-        std::cout << s << std::endl;
-      }
-
-      // Function to split a string by a delimiter
-      std::vector<std::string> result;
-      std::stringstream ss(msg->data);
-      std::string token;
-
-      while (std::getline(ss, token, ','))
-      {
-        result.push_back(token);
-        ROS_DEBUG_STREAM("Time Int: " << time << "Label String: " << token);
-      }
-
-      timeLabelMap.insert({ time, result });
+      labelString.insert(labelString.begin(), labelStringStruct);
+      timeLabelMap.insert({ time, labelString });
     }
   }
-  return 0;
+  return true;
 }
 
 void RosbagDumperAitf::iterateAndDumpImages(
@@ -255,8 +240,12 @@ RosbagDumperAitf::getCorrespondingLabelCategory(const uint64_t time)
 
   // Print the result
   if (nearestIt != timeLabelMap.end()) {}
+  std::vector<std::string> labelVector;
+  labelVector = nearestIt->second;
   labelCategory.category = "labelGeneral";
-  for (auto const& labelCategoryItem : nearestIt->second)
+  labelCategory.datumaroJson = *labelVector.begin();
+  labelVector.erase(labelVector.begin());
+  for (auto const& labelCategoryItem : labelVector)
   {
     labelCategory.labels.push_back(labelCategoryItem);
     labelCategory.labelsIdDatumaro.push_back(1);
@@ -284,7 +273,7 @@ void RosbagDumperAitf::concat_json_labels(const Json::Value& labelStruct,
     for (Json::ArrayIndex i = 0; i < labelStruct.size(); ++i)
     {
       std::string idx = std::to_string(i);
-      std::string new_prefix = prefix.empty() ? idx : prefix + delimiter + idx;
+      std::string new_prefix = prefix.empty() ? idx : prefix;
       concat_json_labels(labelStruct[i], new_prefix, out, delimiter);
     }
   }

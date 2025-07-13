@@ -54,7 +54,7 @@ public:
 private:
   std::string getCameraIntrinsic(const std::string& topicCameraIntrinsics,
                                  double maxViewingDistance);
-  int setLabelGeneral(const std::string& topicLabelGeneral);
+  bool setLabelGeneral(const std::string& topicLabelGeneral);
   void iterateAndDumpImages(const std::string& topicImage,
                             const std::string& cameraIntrinsicsUuid);
   void iterateAndDumpPc2(const std::string& topicPc2);
