@@ -13,7 +13,7 @@
     <arg name="topicLabel" default="/tag/labelGeneral"/>
     <arg name="maxViewingDistance" default="50.0, 50.0"/>
 
-    <node name="seerep_ros_communication_rosbag_dumper" pkg="seerep_ros_comm" type="rosbag_dumper_aitf" output="screen">
+    <node name="seerep_ros_communication_rosbag_dumper" pkg="seerep_ros_comm" type="rosbag_dumper_aitf" output="screen" required="true">
         <rosparam param="bagPath" subst_value="True">$(arg bagPath)</rosparam>
         <rosparam param="hdf5FolderPath" subst_value="True">$(arg hdf5FolderPath)</rosparam>
         <rosparam param="projectFrameId" subst_value="True">$(arg projectFrameId)</rosparam>
