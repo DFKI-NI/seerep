@@ -381,20 +381,20 @@ def createHeader(
     Returns:
         A pointer to the constructed header object
     """
-    if frame:
+    if frame is not None:
         frameStr = builder.CreateString(frame)
-    if projectUuid:
+    if projectUuid is not None:
         projectUuidStr = builder.CreateString(projectUuid)
-    if msgUuid:
+    if msgUuid is not None:
         msgUuidStr = builder.CreateString(msgUuid)
     Header.Start(builder)
-    if frame:
+    if frame is not None:
         Header.AddFrameId(builder, frameStr)
-    if timeStamp:
+    if timeStamp is not None:
         Header.AddStamp(builder, timeStamp)
-    if projectUuid:
+    if projectUuid is not None:
         Header.AddUuidProject(builder, projectUuidStr)
-    if msgUuid:
+    if msgUuid is not None:
         Header.AddUuidMsgs(builder, msgUuidStr)
     return Header.End(builder)
 
@@ -549,7 +549,7 @@ def createBoundingBox(
     Boundingbox.Start(builder)
     Boundingbox.AddCenterPoint(builder, centerPoint)
     Boundingbox.AddSpatialExtent(builder, spatialExtent)
-    if rotation:
+    if rotation is not None:
         Boundingbox.AddRotation(builder, rotation)
     return Boundingbox.End(builder)
 
@@ -676,7 +676,9 @@ def createQuery(
         A pointer to the constructed query object
     """
 
-    if projectUuids:
+    if projectUuids is not None:
+        if isinstance(projectUuids, str):
+            projectUuids = [projectUuids]
         # serialize strings
         projectUuidsSerialized = [
             builder.CreateString(projectUuid) for projectUuid in projectUuids
@@ -686,7 +688,7 @@ def createQuery(
             builder.PrependUOffsetTRelative(projectUuid)
         projectUuidsOffset = builder.EndVector()
 
-    if instanceUuids:
+    if instanceUuids is not None:
         # serialize strings
         instanceUuidsSerialized = [
             builder.CreateString(instanceUuid) for instanceUuid in instanceUuids
@@ -696,7 +698,7 @@ def createQuery(
             builder.PrependUOffsetTRelative(instance)
         instanceOffset = builder.EndVector()
 
-    if dataUuids:
+    if dataUuids is not None:
         # serialize strings
         dataUuidsSerialized = [
             builder.CreateString(dataUuid) for dataUuid in dataUuids
@@ -706,28 +708,28 @@ def createQuery(
             builder.PrependUOffsetTRelative(dataUuid)
         dataUuidOffset = builder.EndVector()
 
-    if labels:
+    if labels is not None:
         Query.QueryStartLabelVector(builder, len(labels))
         for label in reversed(labels):
             builder.PrependUOffsetTRelative(label)
         labelOffset = builder.EndVector()
 
     Query.Start(builder)
-    if polygon2d:
+    if polygon2d is not None:
         Query.AddPolygon(builder, polygon2d)
-    if polygon2dSensorPos:
+    if polygon2dSensorPos is not None:
         Query.AddPolygonSensorPosition(builder, polygon2dSensorPos)
-    if timeIntervalVector:
+    if timeIntervalVector is not None:
         Query.AddTimeintervals(builder, timeIntervalVector)
-    if labels:
+    if labels is not None:
         Query.AddLabel(builder, labelOffset)
     # no if; has default value
     Query.AddMustHaveAllLabels(builder, mustHaveAllLabels)
-    if projectUuids:
+    if projectUuids is not None:
         Query.AddProjectuuid(builder, projectUuidsOffset)
-    if instanceUuids:
+    if instanceUuids is not None:
         Query.AddInstanceuuid(builder, instanceOffset)
-    if dataUuids:
+    if dataUuids is not None:
         Query.QueryAddDatauuid(builder, dataUuidOffset)
     # no if; has default value
     Query.AddWithoutdata(builder, withoutData)
@@ -1194,7 +1196,7 @@ def createImage(
     camera_intrinsics_uuid_offset = builder.CreateString(camera_intrinsics_uuid)
     if image is not None:
         data_offset = builder.CreateByteVector(image.tobytes())
-    if uri:
+    if uri is not None:
         uri_offset = builder.CreateString(uri)
 
     Image.Start(builder)
@@ -1206,9 +1208,9 @@ def createImage(
     if image is not None:
         Image.AddStep(builder, image.nbytes // image.shape[0])
         Image.AddData(builder, data_offset)
-    if uri:
+    if uri is not None:
         Image.AddUri(builder, uri_offset)
-    if labels:
+    if labels is not None:
         Image.AddLabels(builder, label_offset)
     Image.AddUuidCameraintrinsics(builder, camera_intrinsics_uuid_offset)
     return Image.End(builder)
@@ -1223,14 +1225,14 @@ def create_label(
     instance_id: int = None,
 ):
     label_offset = builder.CreateString(label)
-    if instance_uuid:
+    if instance_uuid is not None:
         instance_uuid_offset = builder.CreateString(instance_uuid)
     Label.Start(builder)
     Label.AddLabel(builder, label_offset)
     Label.LabelAddLabelIdDatumaro(builder, label_id)
-    if instance_uuid:
+    if instance_uuid is not None:
         Label.AddInstanceUuid(builder, instance_uuid_offset)
-    if instance_id:
+    if instance_id is not None:
         Label.AddInstanceIdDatumaro(builder, instance_id)
     return Label.End(builder)
 
@@ -1238,7 +1240,7 @@ def create_label(
 def create_label_category(
     builder, labels: List[Label.Label], datumaro_json: str, category: str = None
 ):
-    if category:
+    if category is not None:
         category_offset = builder.CreateString(category)
     datumaro_json_offset = builder.CreateString(datumaro_json)
 
@@ -1248,7 +1250,7 @@ def create_label_category(
     vec_offset = builder.EndVector()
 
     LabelCategory.Start(builder)
-    if category:
+    if category is not None:
         LabelCategory.AddCategory(builder, category_offset)
     LabelCategory.AddLabels(builder, vec_offset)
     LabelCategory.AddDatumaroJson(builder, datumaro_json_offset)
