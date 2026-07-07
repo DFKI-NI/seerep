@@ -61,6 +61,11 @@ void CoreDataset::recreateDatasets(
       BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::error)
           << e.what();
     }
+    catch (const HighFive::Exception& e)
+    {
+      BOOST_LOG_SEV(m_logger, boost::log::trivial::severity_level::error)
+          << e.what();
+    }
   }
 }
 
