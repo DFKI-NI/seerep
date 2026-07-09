@@ -28,7 +28,7 @@ Hdf5CorePointCloud::readDataset(const std::string& uuid)
     return std::nullopt;
   }
 
-  std::shared_ptr<HighFive::Group> group_ptr =
+  const std::shared_ptr<HighFive::Group> group_ptr =
       std::make_shared<HighFive::Group>(m_file->getGroup(hdf5DatasetPath));
 
   seerep_core_msgs::DatasetIndexable data;
@@ -59,6 +59,93 @@ Hdf5CorePointCloud::readDataset(const std::string& uuid)
 std::vector<std::string> Hdf5CorePointCloud::getDatasetUuids()
 {
   return getGroupDatasets(HDF5_GROUP_POINTCLOUD);
+}
+
+std::optional<seerep_core_msgs::TimestampFrameMesh>
+Hdf5CorePointCloud::getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry)
+{
+  const std::scoped_lock lock(*m_write_mtx);
+
+  std::string uuid_str = boost::lexical_cast<std::string>(uuid_entry);
+
+  std::string hdf5DatasetPath = HDF5_GROUP_POINTCLOUD + "/" + uuid_str;
+
+  if (!m_file->exist(hdf5DatasetPath))
+  {
+    throw std::invalid_argument("Hdf5DatasetPath not present for uuid " +
+                                uuid_str + "! Skipping precise check...");
+    BOOST_LOG_SEV(this->m_logger, boost::log::trivial::severity_level::info);
+    return std::nullopt;
+  }
+
+  const std::shared_ptr<HighFive::Group> group_ptr =
+      std::make_shared<HighFive::Group>(m_file->getGroup(hdf5DatasetPath));
+
+  std::vector<float> bb;
+  group_ptr->getAttribute(seerep_hdf5_core::Hdf5CorePointCloud::BOUNDINGBOX)
+      .read(bb);
+
+  seerep_core_msgs::Header head;
+
+  readHeader(uuid_str, *group_ptr, head);
+
+  return seerep_core_msgs::TimestampFrameMesh{ head.timestamp, head.frameId,
+                                               this->createMeshFromAABB(bb) };
+}
+
+CGSurfaceMesh
+Hdf5CorePointCloud::createMeshFromAABB(const std::vector<float>& bb_coords)
+{
+  CGSurfaceMesh mesh;
+
+  // define base indices
+  int x_base = 0;
+  int y_base = 1;
+  int z_base = 2;
+
+  std::vector<CGVertexIndex> verts;
+
+  // create vertices with 3bit cube coords
+  for (uint idx = 0; idx < 0b1000; idx++)
+  {
+    int x_i = x_base + 3 * (idx & 0b001);
+    int y_i = y_base + 3 * ((idx & 0b010) >> 1);
+    int z_i = z_base + 3 * ((idx & 0b100) >> 2);
+
+    CGPoint_3 p{ bb_coords.at(x_i), bb_coords.at(y_i), bb_coords.at(z_i) };
+
+    verts.push_back(mesh.add_vertex(p));
+  }
+
+  std::vector<CGSurfaceMesh::Face_index> descriptors;
+
+  // bottom plane
+  descriptors.push_back(mesh.add_face(verts[0], verts[1], verts[3], verts[2]));
+  // front plane
+  descriptors.push_back(mesh.add_face(verts[2], verts[6], verts[4], verts[0]));
+  // left plane
+  descriptors.push_back(mesh.add_face(verts[3], verts[7], verts[6], verts[2]));
+  // back plane
+  descriptors.push_back(mesh.add_face(verts[1], verts[5], verts[7], verts[3]));
+  // right plane
+  descriptors.push_back(mesh.add_face(verts[4], verts[5], verts[1], verts[0]));
+  // top plane
+  descriptors.push_back(mesh.add_face(verts[6], verts[7], verts[5], verts[4]));
+
+  std::vector<CGSurfaceMesh::Face_index>::iterator idx;
+  // check if any of the faces was not constructed properly
+  if ((idx = std::find_if(descriptors.begin(), descriptors.end(), [](auto elem) {
+         return elem == CGSurfaceMesh::null_face();
+       })) != descriptors.end())
+  {
+    throw std::invalid_argument(
+        "Could not create the faces for the "
+        "SurfaceMesh from the pointcloud AABB! "
+        "First null_face index: " +
+        std::to_string(std::distance(descriptors.begin(), idx)));
+  }
+
+  return mesh;
 }
 
 }  // namespace seerep_hdf5_core

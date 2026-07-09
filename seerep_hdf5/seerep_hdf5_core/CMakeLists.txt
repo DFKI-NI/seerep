@@ -21,6 +21,9 @@ find_package(
   REQUIRED
 )
 
+find_package(CGAL REQUIRED)
+set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
+
 enable_testing()
 find_package(GTest 1.12.0 REQUIRED)
 
@@ -59,6 +62,7 @@ target_link_libraries(
   ${Boost_LOG_LIBRARY}
   ${Boost_LOG_SETUP_LIBRARY}
   ${catkin_LIBRARIES}
+  CGAL::CGAL
 )
 
 # create executable with tests

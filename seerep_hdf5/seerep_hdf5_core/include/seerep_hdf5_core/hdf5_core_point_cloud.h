@@ -4,12 +4,17 @@
 // highfive
 #include <highfive/H5File.hpp>
 
+// CGAL
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Surface_mesh.h>
+
 // seerep_hdf5_core
 #include "hdf5_core_datatype_interface.h"
 #include "hdf5_core_general.h"
 
 // seerep-msgs
 #include <seerep_msgs/dataset_indexable.h>
+#include <seerep_msgs/timestamp_frame_mesh.h>
 
 // std
 #include <boost/geometry.hpp>
@@ -24,6 +29,12 @@
 
 namespace seerep_hdf5_core
 {
+
+using ExactKernel = CGAL::Exact_predicates_exact_constructions_kernel;
+using CGPoint_3 = ExactKernel::Point_3;
+using CGSurfaceMesh = CGAL::Surface_mesh<CGPoint_3>;
+using CGVertexIndex = CGSurfaceMesh::Vertex_index;
+
 class Hdf5CorePointCloud : public Hdf5CoreGeneral,
                            public Hdf5CoreDatatypeInterface
 {
@@ -37,6 +48,33 @@ public:
   readDataset(const std::string& uuid);
 
   std::vector<std::string> getDatasetUuids();
+
+  /**
+   * @brief Get a timestamp-frameid-mesh struct which will be subject to
+   *  encapsulation checks of a query polygon
+   *
+   * The mesh is created from the AABB bounding a pointcloud datatype entry
+   *
+   * @param uuid_entry of the pointcloud datatype entry to fetch the data from
+   *
+   * @return a struct containing the timestamp, frame_id of the data and the mesh itself
+   */
+  std::optional<seerep_core_msgs::TimestampFrameMesh>
+  getPolygonConstraintMesh(const boost::uuids::uuid& uuid_entry);
+
+  /**
+   * @brief create mesh from a given AABB
+   *
+   * @param bb_coords the coordinates of the AABB in the following order:
+   *       0. min_corner_x
+   *       1. min_corner_y
+   *       2. min_corner_z
+   *       3. max_corner_x
+   *       4. max_corner_y
+   *       5. max_corner_z
+   *  @return the surface mesh based on these coordinates
+   */
+  CGSurfaceMesh createMeshFromAABB(const std::vector<float>& bb_coords);
 
 public:
   // image / pointcloud attribute keys
